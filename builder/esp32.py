@@ -1576,26 +1576,27 @@ def compile(*args):  # NOQA
                 import sys
                 print(f"version: {sys.version}")
                 import os
-                os.listdir(f"~")
+                #os.listdir(f"~")
                 os.listdir(f"{espressif_path}/")
                 os.listdir(f"{espressif_path}/python_env/")
             except Exception as e:
                 print(f"got exception {e}")
 
-            for ver in ('3.8', '3.9', '3.10', '3.11', '3.12', '3.13'):
+            for ver in ('3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.15', '3.16'):
                 python_path = (
                     f'{espressif_path}/python_env/'
                     f'idf{IDF_VER[:-2]}_py{ver}_env/bin'
                 )
                 print(f"checking path {python_path}")
                 if os.path.exists(python_path):
+                    python_path += '/python'
                     break
             else:
-                raise RuntimeError(
-                    'unable to locate python version used in the ESP-IDF'
-                )
+                #raise RuntimeError(
+                #    'unable to locate python version used in the ESP-IDF'
+                #)
+                python_path = "python"
 
-            python_path += '/python'
 
             output = output.split('python ', 1)[-1]
             output = output.split('\n', 1)[0]
