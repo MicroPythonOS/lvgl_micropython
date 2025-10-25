@@ -1568,14 +1568,19 @@ def compile(*args):  # NOQA
         if 'Project build complete.' in output:
             output = output.rsplit('To flash, run:')[-1].strip()
 
+            import os
             espressif_path = os.path.expanduser('~/.espressif')
 
-            import sys
-            print(f"version: {sys.version}")
-            import os
-            os.listdir(f"~")
-            os.listdir(f"{espressif_path}/")
-            os.listdir(f"{espressif_path}/python_env")
+            try:
+                print(f"espressif_path: {espressif_path}")
+                import sys
+                print(f"version: {sys.version}")
+                import os
+                os.listdir(f"~")
+                os.listdir(f"{espressif_path}/")
+                os.listdir(f"{espressif_path}/python_env/")
+            except Exception as e:
+                print(f"got exception {e}")
 
             for ver in ('3.8', '3.9', '3.10', '3.11', '3.12', '3.13'):
                 python_path = (
