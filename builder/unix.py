@@ -453,9 +453,10 @@ def compile(*args):  # NOQA
     dst = f'build/lvgl_micropy_{REAL_PORT}'
     shutil.copyfile(src, dst)
 
-    print(f'compiled binary is {os.path.abspath(os.path.split(dst)[0])}')
+    buildpath = f"{os.path.abspath(os.path.split(dst)[0])}/lvgl_micropy_{REAL_PORT}"
+    print(f'compiled binary is {buildpath}')
     print('You need to make the binary executable by running')
-    print(f'"sudo chmod +x lvgl_micropy_{REAL_PORT}"')
+    print(f'"sudo chmod +x {buildpath}"')
 
 
 def mpy_cross():
