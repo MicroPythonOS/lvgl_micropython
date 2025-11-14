@@ -41,7 +41,7 @@
 #include "sdmmc_cmd.h"
 #include "esp_log.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #define DEBUG_printf(...) ESP_LOGI("modsdcard", __VA_ARGS__)
 #else
