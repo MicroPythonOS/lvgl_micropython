@@ -55,7 +55,7 @@ def init(self):
     self.set_params(_MADCTL, param_mv[:1])
 
     param_buf[0] = 0x0A
-    param_buf[1] = 0x82
+    param_buf[1] = 0xA2 # retro-go has 0xA2 but doesnt seem to matter (undocumented?!)
     self.set_params(0xB6, param_mv[:2])
 
     # sets swapping the bytes at the hardware level.
@@ -80,7 +80,8 @@ def init(self):
             'lv.COLOR_FORMAT.RGB565 or lv.COLOR_FORMAT.RGB888'
         )
 
-    param_buf[0] = pixel_format
+    #param_buf[0] = pixel_format
+    param_buf[0] = 0x05 # set value like retro-go
     self.set_params(_COLMOD, param_mv[:1])
 
     time.sleep_ms(10)  # NOQA
@@ -117,37 +118,45 @@ def init(self):
     param_buf[1] = 0xA1
     self.set_params(_PWCTRL1, param_mv[:2])
 
+    # 3Gamma Function Disable (0xF2) from retro-go
+    param_buf[0] = 0x00
+    self.set_params(0xF2, param_mv[:1])
+
     param_buf[0] = 0xD0
     param_buf[1] = 0x00
-    param_buf[2] = 0x02
-    param_buf[3] = 0x07
-    param_buf[4] = 0x0A
-    param_buf[5] = 0x28
-    param_buf[6] = 0x32
-    param_buf[7] = 0x44
-    param_buf[8] = 0x42
-    param_buf[9] = 0x06
-    param_buf[10] = 0x0E
+    param_buf[2] = 0x05
+    param_buf[3] = 0x0E
+    param_buf[4] = 0x15
+    param_buf[5] = 0x0D
+    param_buf[6] = 0x37
+    param_buf[7] = 0x43
+    param_buf[8] = 0x47
+    param_buf[9] = 0x09
+    param_buf[10] = 0x15
     param_buf[11] = 0x12
-    param_buf[12] = 0x14
-    param_buf[13] = 0x17
+    param_buf[12] = 0x16
+    param_buf[13] = 0x19
     self.set_params(_PGC, param_mv[:14])
 
     param_buf[0] = 0xD0
     param_buf[1] = 0x00
-    param_buf[2] = 0x02
-    param_buf[3] = 0x07
-    param_buf[4] = 0x0A
-    param_buf[5] = 0x28
-    param_buf[6] = 0x31
-    param_buf[7] = 0x54
-    param_buf[8] = 0x47
+    param_buf[2] = 0x05
+    param_buf[3] = 0x0D
+    param_buf[4] = 0x0C
+    param_buf[5] = 0x06
+    param_buf[6] = 0x2D
+    param_buf[7] = 0x44
+    param_buf[8] = 0x40
     param_buf[9] = 0x0E
     param_buf[10] = 0x1C
-    param_buf[11] = 0x17
-    param_buf[12] = 0x1B
-    param_buf[13] = 0x1E
+    param_buf[11] = 0x18
+    param_buf[12] = 0x16
+    param_buf[13] = 0x19
     self.set_params(_NGC, param_mv[:14])
+
+    # Doesnt do anything:
+    param_buf[0] = 0x02 # linear, very dark
+    self.set_params(0x26, param_mv[:1])
 
     self.set_params(_INVON)
 
