@@ -97,7 +97,8 @@ def build_commands(_, extra_args, script_dir, lv_cflags, board):
                 '-Wno-unused-command-line-argument '
                 '-Wno-missing-field-initializers"'
                 # 'export CPPFLAGS="-I/opt/homebrew/opt/libffi/include"'
-            )
+            ),
+            'LDFLAGS_EXTRA=-lrlottie'
         ]
     )
 
