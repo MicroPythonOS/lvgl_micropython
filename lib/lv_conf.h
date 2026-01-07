@@ -17,7 +17,7 @@
     #define MICROPY_FFMPEG  0 // works on unix/desktop but not on esp32 (conflicting time.h time_t in /home/user/sources/lvgl_micropython/lib/esp-idf/components/mbedtls/mbedtls/include/mbedtls/platform_time.h)
 #endif
 #ifndef MICROPY_RLOTTIE
-    #define MICROPY_RLOTTIE  1
+    #define MICROPY_RLOTTIE 0
 #endif
 #ifndef MICROPY_TINY_TTF
     #define MICROPY_TINY_TTF  0
@@ -34,7 +34,7 @@
     #define MICROPY_FLOAT  0
 #endif
 #ifndef MICROPY_MEM_SIZE
-    #define MICROPY_MEM_SIZE  256
+    #define MICROPY_MEM_SIZE 256
 #endif
 
 #ifndef MICROPY_FAST_MEM
