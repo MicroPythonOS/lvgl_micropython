@@ -125,6 +125,8 @@ class TaskHandler(object):
                             self.exception_hook(err)
                         else:
                             sys.print_exception(err)  # NOQA
+                        print(f"TaskHandler callback {cb} threw exception, disabling it")
+                        self.remove_event_cb(cb)
 
                 stop_time = time.ticks_ms()  # NOQA
 
