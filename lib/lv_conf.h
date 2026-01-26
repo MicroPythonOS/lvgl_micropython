@@ -25,7 +25,8 @@
 #ifndef MICROPY_CACHE_SIZE
     //#define MICROPY_CACHE_SIZE  50 * 64 * 64 * 2 // 50 images of 64x64 pixels at 2 bytes per pixel
     //#define MICROPY_CACHE_SIZE 1320000 // one image of 1100x600 pixels at 2 bytes per pixel
-    #define MICROPY_CACHE_SIZE 2518040 // one image of 1058x595 pixels at 4 bytes per pixel
+    //#define MICROPY_CACHE_SIZE 2518040 // one image of 1058x595 pixels at 4 bytes per pixel
+    #define MICROPY_CACHE_SIZE 3686400 // one image of 1280x720 pixels at 4 bytes per pixel (needed to open 1280x720 images in ImageView app)
 #endif
 #ifndef MICROPY_COLOR_DEPTH
     #define MICROPY_COLOR_DEPTH  16
@@ -791,7 +792,7 @@ extern void *mp_lv_roots;
 #define LV_USE_LODEPNG 1
 
 /*PNG decoder(libpng) library*/
-#define LV_USE_LIBPNG 0
+#define LV_USE_LIBPNG 0 // lv_libpng.c:14:10: fatal error: png.h: No such file or directory
 
 /*BMP decoder library*/
 #define LV_USE_BMP 1
