@@ -184,6 +184,14 @@
         SDL_SetTextureBlendMode(self->texture, SDL_BLENDMODE_BLEND);
         SDL_SetWindowSize(self->window, width, height);
 
+        // Check for SDL_WINDOW_FULLSCREEN environment variable
+        if (getenv("SDL_WINDOW_FULLSCREEN") != NULL) {
+            SDL_SetWindowFullscreen(self->window, SDL_WINDOW_FULLSCREEN);
+        }
+        // Set arrow cursor
+        SDL_Cursor* cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+        SDL_SetCursor(cursor);
+
         self->rgb565_byte_swap = false;
         self->trans_done = true;
 
