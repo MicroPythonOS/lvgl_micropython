@@ -2,7 +2,7 @@
 
 #ifndef __MICROPY_CONFIG__
 #define __MICROPY_CONFIG__
-#define LV_STDLIB_MPY 254
+#define LV_STDLIB_MPY 254 // very simple implementation, see ext_mod/lvgl/mem_core.c
 
 #ifndef MICROPY_FREETYPE
     #define MICROPY_FREETYPE  0
@@ -23,10 +23,11 @@
     #define MICROPY_TINY_TTF  0
 #endif
 #ifndef MICROPY_CACHE_SIZE
-    //#define MICROPY_CACHE_SIZE  50 * 64 * 64 * 2 // 50 images of 64x64 pixels at 2 bytes per pixel
+    //#define MICROPY_CACHE_SIZE  409600 // 50 images of 64x64 pixels at 2 bytes per pixel
+    #define MICROPY_CACHE_SIZE 921600 // one image of 720x640 pixels at 2 bytes per pixel, or one PNG of 360x320 pixels at 4 bytes per pixel
     //#define MICROPY_CACHE_SIZE 1320000 // one image of 1100x600 pixels at 2 bytes per pixel
     //#define MICROPY_CACHE_SIZE 2518040 // one image of 1058x595 pixels at 4 bytes per pixel
-    #define MICROPY_CACHE_SIZE 3686400 // one image of 1280x720 pixels at 4 bytes per pixel (needed to open 1280x720 images in ImageView app)
+    //#define MICROPY_CACHE_SIZE 3686400 // one image of 1280x720 pixels at 4 bytes per pixel (needed to open 1280x720 PNG images in ImageView app)
 #endif
 #ifndef MICROPY_COLOR_DEPTH
     #define MICROPY_COLOR_DEPTH  16
@@ -92,7 +93,7 @@ extern void *mp_lv_roots;
 /* Possible values
  * - LV_STDLIB_BUILTIN:     LVGL's built in implementation
  * - LV_STDLIB_CLIB:        Standard C functions, like malloc, strlen, etc
- * - LV_STDLIB_MICROPYTHON: MicroPython implementation
+ * - LV_STDLIB_MPY:         MicroPython implementation
  * - LV_STDLIB_RTTHREAD:    RT-Thread implementation
  * - LV_STDLIB_CUSTOM:      Implement the functions externally
  */
@@ -186,13 +187,13 @@ extern void *mp_lv_roots;
 	 */
 
 	#define LV_DRAW_SW_SUPPORT_RGB565		1
-	#define LV_DRAW_SW_SUPPORT_RGB565A8		1
-	#define LV_DRAW_SW_SUPPORT_RGB888		1
-	#define LV_DRAW_SW_SUPPORT_XRGB8888		1
+	#define LV_DRAW_SW_SUPPORT_RGB565A8		0
+	#define LV_DRAW_SW_SUPPORT_RGB888		0
+	#define LV_DRAW_SW_SUPPORT_XRGB8888		0
 	#define LV_DRAW_SW_SUPPORT_ARGB8888		1
 	#define LV_DRAW_SW_SUPPORT_L8			1
-	#define LV_DRAW_SW_SUPPORT_AL88			1
-	#define LV_DRAW_SW_SUPPORT_A8			1
+	#define LV_DRAW_SW_SUPPORT_AL88			0
+	#define LV_DRAW_SW_SUPPORT_A8			0
 
 	/* Set the number of draw unit.
      * > 1 requires an operating system enabled in `LV_USE_OS`
@@ -330,15 +331,15 @@ extern void *mp_lv_roots;
 
 
     /*Enable/disable LV_LOG_TRACE in modules that produces a huge number of logs*/
-    #define LV_LOG_TRACE_MEM        1
-    #define LV_LOG_TRACE_TIMER      1
-    #define LV_LOG_TRACE_INDEV      1
-    #define LV_LOG_TRACE_DISP_REFR  1
-    #define LV_LOG_TRACE_EVENT      1
-    #define LV_LOG_TRACE_OBJ_CREATE 1
-    #define LV_LOG_TRACE_LAYOUT     1
-    #define LV_LOG_TRACE_ANIM       1
-    #define LV_LOG_TRACE_CACHE      1
+    #define LV_LOG_TRACE_MEM        0
+    #define LV_LOG_TRACE_TIMER      0
+    #define LV_LOG_TRACE_INDEV      0
+    #define LV_LOG_TRACE_DISP_REFR  0
+    #define LV_LOG_TRACE_EVENT      0
+    #define LV_LOG_TRACE_OBJ_CREATE 0
+    #define LV_LOG_TRACE_LAYOUT     0
+    #define LV_LOG_TRACE_ANIM       0
+    #define LV_LOG_TRACE_CACHE      0
 
 #endif  /*LV_USE_LOG*/
 
@@ -823,7 +824,7 @@ extern void *mp_lv_roots;
 #define LV_USE_QRCODE 1
 
 /*Barcode code library*/
-#define LV_USE_BARCODE 1
+#define LV_USE_BARCODE 0 // don't think this will ever be used
 
 /*FreeType library*/
 #define LV_USE_FREETYPE MICROPY_FREETYPE
