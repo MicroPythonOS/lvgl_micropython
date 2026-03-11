@@ -24,10 +24,10 @@
 #endif
 #ifndef MICROPY_CACHE_SIZE
     //#define MICROPY_CACHE_SIZE  409600 // 50 images of 64x64 pixels at 2 bytes per pixel
-    #define MICROPY_CACHE_SIZE 921600 // one image of 720x640 pixels at 2 bytes per pixel, or one PNG of 360x320 pixels at 4 bytes per pixel
+    //#define MICROPY_CACHE_SIZE 921600 // one image of 720x640 pixels at 2 bytes per pixel, or one PNG of 360x320 pixels at 4 bytes per pixel
     //#define MICROPY_CACHE_SIZE 1320000 // one image of 1100x600 pixels at 2 bytes per pixel
     //#define MICROPY_CACHE_SIZE 2518040 // one image of 1058x595 pixels at 4 bytes per pixel
-    //#define MICROPY_CACHE_SIZE 3686400 // one image of 1280x720 pixels at 4 bytes per pixel (needed to open 1280x720 PNG images in ImageView app)
+    #define MICROPY_CACHE_SIZE 3686400 // one image of 1280x720 pixels at 4 bytes per pixel (needed to open 1280x720 PNG images in ImageView app)
 #endif
 #ifndef MICROPY_COLOR_DEPTH
     #define MICROPY_COLOR_DEPTH  16
