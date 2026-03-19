@@ -98,7 +98,7 @@ def build_commands(_, extra_args, script_dir, lv_cflags, board):
                 '-Wno-missing-field-initializers"'
                 # 'export CPPFLAGS="-I/opt/homebrew/opt/libffi/include"'
             ),
-            # 'LDFLAGS_EXTRA=-lrlottie' # needed to enable RLOTTIE, but doesn't work on macOS (homebrew doesn't have rlottie)
+            'LDFLAGS_EXTRA=-static' # static binary (all libraries included) so it's more portable
         ]
     )
 
