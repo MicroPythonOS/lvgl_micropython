@@ -27,7 +27,14 @@ def parse_args(extra_args, lv_cflags, board):
 
 
 def build_commands(not_sure, extra_args, script_dir, lv_cflags, board):
-    return _build_commands(not_sure, extra_args, script_dir, lv_cflags, board)
+    extra_args = _build_commands(not_sure, extra_args, script_dir, lv_cflags, board)
+
+    static_flag = 'LDFLAGS_EXTRA=-static'
+    for cmd in (unix.unix_cmd, unix.clean_cmd, unix.compile_cmd, unix.submodules_cmd):
+        while static_flag in cmd:
+            cmd.remove(static_flag)
+
+    return extra_args
 
 
 def build_manifest(

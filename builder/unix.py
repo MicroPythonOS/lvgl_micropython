@@ -98,9 +98,11 @@ def build_commands(_, extra_args, script_dir, lv_cflags, board):
                 '-Wno-missing-field-initializers"'
                 # 'export CPPFLAGS="-I/opt/homebrew/opt/libffi/include"'
             ),
-            'LDFLAGS_EXTRA=-static' # static binary (all libraries included) so it's more portable
         ]
     )
+
+    if REAL_PORT == 'unix':
+        unix_cmd.append('LDFLAGS_EXTRA=-static')  # static binary (all libraries included) so it's more portable
 
     # unix_cmd.extend(extra_args)
 
