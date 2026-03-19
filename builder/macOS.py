@@ -26,8 +26,22 @@ def parse_args(extra_args, lv_cflags, board):
     return _parse_args(extra_args, lv_cflags, board)
 
 
+_MACOS_LDFLAGS_EXTRA = "LDFLAGS_EXTRA+=-static-libgcc -static-libstdc++"
+
+
+def _append_ldflags_extra():
+    if _MACOS_LDFLAGS_EXTRA not in unix.unix_cmd:
+        unix.unix_cmd.append(_MACOS_LDFLAGS_EXTRA)
+
+    for cmd in (unix.clean_cmd, unix.compile_cmd, unix.submodules_cmd):
+        if _MACOS_LDFLAGS_EXTRA not in cmd:
+            cmd.append(_MACOS_LDFLAGS_EXTRA)
+
+
 def build_commands(not_sure, extra_args, script_dir, lv_cflags, board):
-    return _build_commands(not_sure, extra_args, script_dir, lv_cflags, board)
+    extra_args = _build_commands(not_sure, extra_args, script_dir, lv_cflags, board)
+    _append_ldflags_extra()
+    return extra_args
 
 
 def build_manifest(
