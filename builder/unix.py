@@ -63,6 +63,15 @@ def parse_args(extra_args, lv_cflags, board):
 
     heap_size = unix_args.heap_size
     sdl_flags = unix_args.sdl_flags
+    if not sdl_flags:
+        sdl_flags = (
+            "-DSDL_OPENGL=OFF "
+            "-DSDL_OPENGLES=OFF "
+            "-DSDL_VULKAN=OFF "
+            "-DSDL_DBUS=OFF "
+            "-DSDL_X11=ON "
+            "-DSDL_WAYLAND=ON"
+        )
 
     return extra_args, lv_cflags, board
 
