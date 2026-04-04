@@ -166,7 +166,6 @@
         self->panel_io_config.width = width;
         self->panel_io_config.height = height;
 
-        SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
         SDL_StartTextInput();
 
         self->window = SDL_CreateWindow(
