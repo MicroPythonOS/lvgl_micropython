@@ -47,6 +47,12 @@ target.generate("target_font.ttf")
 echo "Expanding builtin font to include diacritics 0x7F-0xFF, the Bitcoin B symbol 0x20BF, the italic satoshi symbol 0x4E2F and the regular satoshi symbol 0x4E30"
 fontgen_file=MicroPythonOS/lvgl_micropython/lib/lvgl/scripts/built_in_font/built_in_font_gen.py
 sed -i.backup "s/default=\['0x20-0x7F,0xB0,0x2022'\],/default=\['0x20-0xFF,0xB0,0x2022,0x20BF,0x4E2F,0x4E30'\],/" "$fontgen_file"
+
+Add this near the end:
+
+# search, heart/love, zoom in, zoom out, QR code, camera, linux tux penguin, bitcoin without circle, feces/shit, bitcoin in circle, piggy bank, no dollar, peace
+syms += ",0xf002,0xf004,0xf00e,0xf010,0xf029,0xf030,0xf15a,0xf17c,0xf2fe,0xf379,0xf4d3,0xf4e8,0xf67c"
+
 ```
 
 5) Make sure you have https://github.com/lvgl/lv_font_conv installed on your path (needs npm so nodejs)
