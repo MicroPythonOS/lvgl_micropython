@@ -49,7 +49,8 @@ fontgen_file=MicroPythonOS/lvgl_micropython/lib/lvgl/scripts/built_in_font/built
 sed -i.backup "s/default=\['0x20-0x7F,0xB0,0x2022'\],/default=\['0x20-0xFF,0xB0,0x2022,0x20BF,0x4E2F,0x4E30'\],/" "$fontgen_file"
 
 syms += ",0xf002,0xf004,0xf005,0xf00e,0xf010,0xf029,0xf030" # search, heart, star, search-plus, search-minus, qrcode, camera
-syms += ",0xf15a,0xf164,0xf165,0xf379" # btc (without circle), thumbs-up, thumbs-down, bitcoin (in circle)
+syms += ",0xf15a,0xf164,0xf165,0xf1e0" # btc (without circle), thumbs-up, thumbs-down, share-alt
+syms += ",0xf2ea,0xf379,0xf58f" # undo-alt, bitcoin (in circle), headphones-alt
 ```
 
 5) Make sure you have https://github.com/lvgl/lv_font_conv installed on your path (needs npm so nodejs)
