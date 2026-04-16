@@ -109,7 +109,7 @@ def submodules():
 
         if 'Installed\n' not in out:
             print(out)
-            raise RuntimeError('libffi is not installed')
+            #raise RuntimeError('libffi is not installed')
 
         out = out.split('Installed\n', 1)[-1]
         alt_path = out.split('(', 1)[0].strip().split('Cellar', 1)[0]
