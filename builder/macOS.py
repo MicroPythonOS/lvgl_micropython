@@ -107,10 +107,9 @@ def submodules():
             print(out)
             sys.exit(ret)
 
-        if 'Installed\n' not in out:
-            print("builder/macOS.py things libffi is not installed because there's no 'Installed\\n' in the following output of brew info libffi but that's wrong:")
+        if 'Installed' not in out:
             print(out)
-            #raise RuntimeError('libffi is not installed')
+            raise RuntimeError('libffi is not installed')
 
         out = out.split('Installed\n', 1)[-1]
         alt_path = out.split('(', 1)[0].strip().split('Cellar', 1)[0]
@@ -133,7 +132,7 @@ def submodules():
             print(out)
             sys.exit(ret)
 
-        if 'Installed\n' not in out:
+        if 'Installed' not in out:
             print(out)
             raise RuntimeError('sdl2 is not installed')
 
