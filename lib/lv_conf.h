@@ -512,16 +512,21 @@ extern void *mp_lv_roots;
 #define LV_FONT_MONTSERRAT_24 1 // compressed saves ~20KB?
 #define LV_FONT_MONTSERRAT_26 0
 #define LV_FONT_MONTSERRAT_28 1 // compressed saves ~30KB?
+
+/*
+// These bigger fonts take up a lot of space, and are hardly used, so they are disabled.
+// Apps can scale up smaller fonts, or include them in the app itself and load them at runtime
+*/
 #define LV_FONT_MONTSERRAT_30 0
 #define LV_FONT_MONTSERRAT_32 0
-#define LV_FONT_MONTSERRAT_34 1 // compressed saves ~45KB?
+#define LV_FONT_MONTSERRAT_34 0 // compressed saves ~45KB? Removing saves 43KB (used by pavel's cellular)
 #define LV_FONT_MONTSERRAT_36 0
 #define LV_FONT_MONTSERRAT_38 0
-#define LV_FONT_MONTSERRAT_40 1 // compressed saves ~57KB
+#define LV_FONT_MONTSERRAT_40 0 // compressed saves ~57KB, removing saves 53KB (used by Nostr)
 #define LV_FONT_MONTSERRAT_42 0
 #define LV_FONT_MONTSERRAT_44 0
 #define LV_FONT_MONTSERRAT_46 0
-#define LV_FONT_MONTSERRAT_48 1 // compressed saves ~89KB
+#define LV_FONT_MONTSERRAT_48 0 // compressed saves ~89KB removing saves 122KB (used by QuasiNametag)
 
 /*Demonstrate special features*/
 #define LV_FONT_MONTSERRAT_28_COMPRESSED 0  /*bpp = 3*/
@@ -529,7 +534,7 @@ extern void *mp_lv_roots;
 #define LV_FONT_SOURCE_HAN_SANS_SC_14_CJK 0  /*1000 most common CJK radicals*/
 #define LV_FONT_SOURCE_HAN_SANS_SC_16_CJK 0  /*1000 most common CJK radicals*/
 
-/*Pixel perfect monospace fonts*/
+/*Pixel perfect monospace fonts - aren't used and don't have symbols, but take up just 3.9KiB so let's leave them in */
 #define LV_FONT_UNSCII_8  1
 #define LV_FONT_UNSCII_16 1
 
