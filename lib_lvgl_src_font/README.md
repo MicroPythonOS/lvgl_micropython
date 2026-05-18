@@ -113,5 +113,5 @@ cd lvgl_micropython/lib/lvgl/scripts/built_in_font
 python3 generate_all.py
 ```
 
-7) Copy the generated files from lvgl_micropython/lib/lvgl/src/fonts/ to lvgl_micropython/lib_lvgl_src_fonts/
+7) Copy the generated files from lvgl_micropython/lib/lvgl/src/font/ to lvgl_micropython/lib_lvgl_src_fonts/
 
