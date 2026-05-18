@@ -125,6 +125,8 @@ class TaskHandler(object):
                             self.exception_hook(err)
                         else:
                             sys.print_exception(err)  # NOQA
+                        print(f"TaskHandler callback {cb} threw exception, disabling it")
+                        self.remove_event_cb(cb)
 
                 stop_time = time.ticks_ms()  # NOQA
 
@@ -133,7 +135,13 @@ class TaskHandler(object):
                 lv.tick_inc(ticks_diff)
 
                 if run_update:
-                    lv.task_handler()
+                    try:
+                        lv.task_handler()
+                    except Exception as e:
+                        print(f"lv.task_handler() threw exception: {e}")
+                        sys.print_exception(e)
+                        # LVGL UI still hangs
+
                     start_time = time.ticks_ms()  # NOQA
 
                     for cb, evt, data in self._callbacks:
