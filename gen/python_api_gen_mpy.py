@@ -2970,10 +2970,27 @@ GENMPY_UNUSED static {return_type} {func_name}_callback({func_args})
     mp_obj_t mp_args[{num_args}];
     {build_args}
     mp_obj_t callbacks = get_callback_dict_from_user_data({user_data});
+    if (!callbacks) {{
+        {return_failure}
+    }}
+    // Fetch callback once so exception handling can disable it on failure.
+    mp_obj_t cb = mp_obj_dict_get(callbacks, MP_OBJ_NEW_QSTR(MP_QSTR_{func_name}));
+    if (cb == mp_const_none || !mp_obj_is_callable(cb)) {{
+        {return_failure}
+    }}
+    {callback_result_decl}nlr_buf_t nlr;
     _nesting++;
-    {return_value_assignment}mp_call_function_n_kw(mp_obj_dict_get(callbacks, MP_OBJ_NEW_QSTR(MP_QSTR_{func_name})) , {num_args}, 0, mp_args);
-    _nesting--;
-    return{return_value};
+    if (nlr_push(&nlr) == 0) {{
+        {call_assign}mp_call_function_n_kw(cb, {num_args}, 0, mp_args);
+        nlr_pop();
+        _nesting--;
+        {return_success}
+    }} else {{
+        _nesting--;
+        mp_obj_print_exception(MICROPY_ERROR_PRINTER, MP_OBJ_FROM_PTR(nlr.ret_val));
+        mp_obj_dict_store(callbacks, MP_OBJ_NEW_QSTR(MP_QSTR_{func_name}), mp_const_none);
+        {return_failure}
+    }}
 }}
 """.format(
         func_prototype = gen.visit(func),
@@ -2983,7 +3000,10 @@ GENMPY_UNUSED static {return_type} {func_name}_callback({func_args})
         num_args=len(args),
         build_args="\n    ".join([build_callback_func_arg(arg, i, func, func_name=func_name) for i,arg in enumerate(args)]),
         user_data=full_user_data,
-        return_value_assignment = '' if return_type == 'void' else 'mp_obj_t callback_result = ',
+        callback_result_decl = '' if return_type == 'void' else 'mp_obj_t callback_result;\n    ',
+        call_assign = '' if return_type == 'void' else 'callback_result = ',
+        return_success = '' if return_type == 'void' else 'return %s(callback_result);' % mp_to_lv[return_type],
+        return_failure = 'return;' if return_type == 'void' else 'return %s(mp_const_none);' % mp_to_lv[return_type],
         return_value='' if return_type == 'void' else ' %s(callback_result)' % mp_to_lv[return_type]))
     generated_callbacks[func_name] = True
 
