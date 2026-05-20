@@ -20,7 +20,7 @@
     #define MICROPY_RLOTTIE 0
 #endif
 #ifndef MICROPY_TINY_TTF
-    #define MICROPY_TINY_TTF  0
+    #define MICROPY_TINY_TTF  1
 #endif
 #ifndef MICROPY_CACHE_SIZE
     //#define MICROPY_CACHE_SIZE  409600 // 50 images of 64x64 pixels at 2 bytes per pixel
@@ -310,7 +310,7 @@ extern void *mp_lv_roots;
     // // 0 is trace, 1 is info, 2 is warn, 3 is error, 4 is user (FPS is here as 'sysmon' user)
     // trace is useful but logs a LOT for every screen draw...
     //#define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
-    #define LV_LOG_LEVEL LV_LOG_LEVEL_INFO
+    #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
 
     /*1: Print the log with 'printf';
     *0: User need to register a callback with `lv_log_register_print_cb()`*/
@@ -323,11 +323,11 @@ extern void *mp_lv_roots;
 
     /*1: Enable print timestamp;
      *0: Disable print timestamp*/
-    #define LV_LOG_USE_TIMESTAMP 1
+    #define LV_LOG_USE_TIMESTAMP 0
 
     /*1: Print file and line number of the log;
      *0: Do not print file and line number of the log*/
-    #define LV_LOG_USE_FILE_LINE 1
+    #define LV_LOG_USE_FILE_LINE 0
 
 
     /*Enable/disable LV_LOG_TRACE in modules that produces a huge number of logs*/
@@ -695,7 +695,7 @@ extern void *mp_lv_roots;
 
 #define LV_USE_TILEVIEW   1
 
-#define LV_USE_WIN        1
+#define LV_USE_WIN        0
 
 /*==================
  * THEMES
@@ -801,7 +801,7 @@ extern void *mp_lv_roots;
 #define LV_USE_LIBPNG 0 // lv_libpng.c:14:10: fatal error: png.h: No such file or directory
 
 /*BMP decoder library*/
-#define LV_USE_BMP 1
+#define LV_USE_BMP 0
 
 /* JPG + split JPG decoder library.
  * Split JPG is a custom format optimized for embedded systems. */
@@ -811,8 +811,8 @@ extern void *mp_lv_roots;
  * Supports complete JPEG specifications and high-performance JPEG decoding. */
 #define LV_USE_LIBJPEG_TURBO 0  // needs LDFLAGS += -ljpeg in MicroPython's Makefile for this port. Only got it working on unix, not esp32 yet, needs libjpeg probably.
 
-/*GIF decoder library*/
-#define LV_USE_GIF 1
+/*GIF decoder library - disabled because buggy - use animimg or lottie maybe if you want */
+#define LV_USE_GIF 0
 #if LV_USE_GIF
 /*GIF decoder accelerate*/
 #define LV_GIF_CACHE_DECODE_DATA 1
@@ -958,7 +958,7 @@ extern void *mp_lv_roots;
 
 /*1: Enable Pinyin input method*/
 /*Requires: lv_keyboard*/
-#define LV_USE_IME_PINYIN 1
+#define LV_USE_IME_PINYIN 0
 #if LV_USE_IME_PINYIN
     /*1: Use default thesaurus*/
     /*If you do not use the default thesaurus, be sure to use `lv_ime_pinyin` after setting the thesauruss*/
