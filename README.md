@@ -15,6 +15,27 @@
 * If you want to update to the current master then delete your local copy and clone it again from scratch.
 
 
+## *MicroPythonOS Branching Model*
+
+The MicroPythonOS fork of this repository keeps long-running work split into topic branches and then combines them in a single integration branch.
+
+* `integration`: the branch used by MicroPythonOS builds; this is where all selected topic branches are merged.
+* `topic/lv-conf`: MicroPythonOS-specific LVGL configuration defaults and tuning.
+* `topic/platform`: platform-level fixes and compatibility updates (unix/macOS/SDL and related plumbing).
+* `topic/error-handling`: runtime hardening and callback/task exception handling improvements.
+* `topic/fonts`: custom font source updates and related font/symbol changes used by MicroPythonOS.
+* `topic/esp32-uart-repl-runtime`: adds the ESP32 UART REPL runtime-toggle patch file (`esp32_uart_repl_runtime.patch`).
+
+Typical flow in this fork:
+
+1. Make focused changes on a `topic/*` branch.
+2. Push the topic branch for review/testing.
+3. Merge (usually fast-forward) into `integration`.
+4. Push `integration`, which is the branch consumed by MicroPythonOS.
+
+`main` stays closer to upstream layout, while `integration` is the curated branch that aggregates the MicroPythonOS fork-specific deltas.
+
+
 
 # LVGL binding for Micropython
 ______________________________
@@ -955,6 +976,5 @@ Bit orders are a tuple of durations. The first 2 numbers define a bit as 0 and t
 -----------------------------------------------------------
 
 https://github.com/fabse-hack/temp_humidity_micropython_lvgl
-
 
 
