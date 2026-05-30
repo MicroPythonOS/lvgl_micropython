@@ -1,0 +1,99 @@
+diff --git a/src/others/imgfont/lv_imgfont.c b/src/others/imgfont/lv_imgfont.c
+index edc69907d..59b4cd521 100644
+--- a/src/others/imgfont/lv_imgfont.c
++++ b/src/others/imgfont/lv_imgfont.c
+@@ -21,6 +21,13 @@ typedef struct {
+     lv_font_t font;
+     lv_imgfont_get_path_cb_t path_cb;
+     void * user_data;
++    /* Codepoint range filter — see lv_imgfont_set_range().
++     * Default cp_min=0, cp_max=0xFFFFFFFF accepts all codepoints.
++     * Default excl_min=1, excl_max=0 is empty (excl_min > excl_max => no exclusion). */
++    uint32_t cp_min;
++    uint32_t cp_max;
++    uint32_t excl_min;
++    uint32_t excl_max;
+ } imgfont_dsc_t;
+ 
+ /**********************
+@@ -53,6 +60,13 @@ lv_font_t * lv_imgfont_create(uint16_t height, lv_imgfont_get_path_cb_t path_cb,
+ 
+     dsc->path_cb = path_cb;
+     dsc->user_data = user_data;
++    /* Accept-all defaults — backward compatible with callers that never call
++     * lv_imgfont_set_range(). cp_min=0 / cp_max=UINT32_MAX accepts everything,
++     * and excl_min(1) > excl_max(0) means the exclusion window is empty. */
++    dsc->cp_min   = 0;
++    dsc->cp_max   = 0xFFFFFFFFu;
++    dsc->excl_min = 1;
++    dsc->excl_max = 0;
+ 
+     lv_font_t * font = &dsc->font;
+     font->dsc = dsc;
+@@ -75,6 +89,23 @@ void lv_imgfont_destroy(lv_font_t * font)
+     lv_free(dsc);
+ }
+ 
++void lv_imgfont_set_range(lv_font_t * font, uint32_t cp_min, uint32_t cp_max,
++                          uint32_t excl_min, uint32_t excl_max)
++{
++    LV_ASSERT_NULL(font);
++    /* Only valid on fonts created by lv_imgfont_create() — detected by the
++     * get_glyph_dsc fingerprint. Silently ignore on any other lv_font_t to
++     * keep the API safe to call defensively from MicroPython. */
++    if(font->get_glyph_dsc != imgfont_get_glyph_dsc) return;
++
++    imgfont_dsc_t * dsc = (imgfont_dsc_t *)font->dsc;
++    LV_ASSERT_NULL(dsc);
++    dsc->cp_min   = cp_min;
++    dsc->cp_max   = cp_max;
++    dsc->excl_min = excl_min;
++    dsc->excl_max = excl_max;
++}
++
+ /**********************
+  *   STATIC FUNCTIONS
+  **********************/
+@@ -96,6 +127,13 @@ static bool imgfont_get_glyph_dsc(const lv_font_t * font, lv_font_glyph_dsc_t *
+     LV_ASSERT_NULL(dsc);
+     if(dsc->path_cb == NULL) return false;
+ 
++    /* Fast pre-filter: reject codepoints outside the accept range, or inside
++     * the exclude range, WITHOUT invoking path_cb. This matters when path_cb
++     * crosses into a slow caller (e.g. a MicroPython callback) — for every
++     * non-emoji glyph in a normal text run, we now stay entirely in C. */
++    if(unicode < dsc->cp_min || unicode > dsc->cp_max) return false;
++    if(unicode >= dsc->excl_min && unicode <= dsc->excl_max) return false;
++
+     int32_t offset_y = 0;
+ 
+     const void * img_src = dsc->path_cb(font, unicode, unicode_next, &offset_y, dsc->user_data);
+diff --git a/src/others/imgfont/lv_imgfont.h b/src/others/imgfont/lv_imgfont.h
+index 68c317a6d..a4e2611d9 100644
+--- a/src/others/imgfont/lv_imgfont.h
++++ b/src/others/imgfont/lv_imgfont.h
+@@ -50,6 +50,24 @@ lv_font_t * lv_imgfont_create(uint16_t height, lv_imgfont_get_path_cb_t path_cb,
+  */
+ void lv_imgfont_destroy(lv_font_t * font);
+ 
++/**
++ * Restrict the codepoints this imgfont will answer for. When set, codepoints
++ * outside [cp_min, cp_max] (or inside [excl_min, excl_max]) cause
++ * get_glyph_dsc to return false IMMEDIATELY without invoking path_cb. This
++ * lets LVGL skip the (potentially expensive) path_cb for codepoints that
++ * are known to not be represented in the font, falling back to the next
++ * font in the chain at C speed. Pass cp_min=0/cp_max=0xFFFFFFFF to accept
++ * everything; pass excl_min=1/excl_max=0 (empty range) to disable exclusion.
++ * Has no effect if `font` is not an imgfont.
++ * @param font     pointer to image font handle returned by lv_imgfont_create
++ * @param cp_min   lowest accepted codepoint
++ * @param cp_max   highest accepted codepoint
++ * @param excl_min lowest codepoint in the exclusion window (e.g. PUA 0xE000)
++ * @param excl_max highest codepoint in the exclusion window (e.g. 0xF8FF)
++ */
++void lv_imgfont_set_range(lv_font_t * font, uint32_t cp_min, uint32_t cp_max,
++                          uint32_t excl_min, uint32_t excl_max);
++
+ /**********************
+  *      MACROS
+  **********************/
