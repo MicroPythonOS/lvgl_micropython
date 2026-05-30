@@ -74,8 +74,11 @@ def is_homebrew_arm(cmd):
 
         return is_homebrew_arm([['/opt/homebrew/bin/brew', 'config']])
 
+    # Tolerate blank lines / section banners in `brew config` output —
+    # newer Homebrew versions occasionally emit lines without ':' which
+    # would otherwise IndexError out the whole macOS build.
     data = {line.split(':', 1)[0].strip(): line.split(':', 1)[1].strip() for
-            line in output.split('\n')}
+            line in output.split('\n') if ':' in line}
 
     if 'macOS' not in data:
         raise RuntimeError('Unable to determine Homebrew CPU type')
