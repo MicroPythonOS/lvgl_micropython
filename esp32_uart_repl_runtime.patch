@@ -1,0 +1,131 @@
+diff --git a/ports/esp32/modesp.c b/ports/esp32/modesp.c
+index d3cefbe2..3dd11ece 100644
+--- a/ports/esp32/modesp.c
++++ b/ports/esp32/modesp.c
+@@ -36,6 +36,8 @@
+ #include "py/mperrno.h"
+ #include "py/mphal.h"
+ 
++#include "uart.h"
++
+ static mp_obj_t esp_osdebug(size_t n_args, const mp_obj_t *args) {
+     esp_log_level_t level = LOG_LOCAL_LEVEL; // Maximum available level
+     if (n_args == 2) {
+@@ -53,6 +55,18 @@ static mp_obj_t esp_osdebug(size_t n_args, const mp_obj_t *args) {
+ }
+ static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(esp_osdebug_obj, 1, 2, esp_osdebug);
+ 
++#if MICROPY_HW_ENABLE_UART_REPL
++static mp_obj_t esp_uart_repl(size_t n_args, const mp_obj_t *args) {
++    if (n_args == 0) {
++        return mp_obj_new_bool(uart_stdout_is_enabled());
++    }
++
++    uart_stdout_set_enabled(mp_obj_is_true(args[0]));
++    return mp_const_none;
++}
++static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(esp_uart_repl_obj, 0, 1, esp_uart_repl);
++#endif
++
+ static mp_obj_t esp_flash_read_(mp_obj_t offset_in, mp_obj_t buf_in) {
+     mp_int_t offset = mp_obj_get_int(offset_in);
+     mp_buffer_info_t bufinfo;
+@@ -117,6 +131,10 @@ static const mp_rom_map_elem_t esp_module_globals_table[] = {
+ 
+     { MP_ROM_QSTR(MP_QSTR_osdebug), MP_ROM_PTR(&esp_osdebug_obj) },
+ 
++    #if MICROPY_HW_ENABLE_UART_REPL
++    { MP_ROM_QSTR(MP_QSTR_uart_repl), MP_ROM_PTR(&esp_uart_repl_obj) },
++    #endif
++
+     { MP_ROM_QSTR(MP_QSTR_flash_read), MP_ROM_PTR(&esp_flash_read_obj) },
+     { MP_ROM_QSTR(MP_QSTR_flash_write), MP_ROM_PTR(&esp_flash_write_obj) },
+     { MP_ROM_QSTR(MP_QSTR_flash_erase), MP_ROM_PTR(&esp_flash_erase_obj) },
+diff --git a/ports/esp32/mphalport.c b/ports/esp32/mphalport.c
+index 5197ccc0..911dbf67 100644
+--- a/ports/esp32/mphalport.c
++++ b/ports/esp32/mphalport.c
+@@ -162,8 +162,10 @@ mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
+     did_write = true;
+     #endif
+     #if MICROPY_HW_ENABLE_UART_REPL
+-    uart_stdout_tx_strn(str, len);
+-    did_write = true;
++    if (uart_stdout_is_enabled()) {
++        uart_stdout_tx_strn(str, len);
++        did_write = true;
++    }
+     #endif
+     if (release_gil) {
+         MP_THREAD_GIL_ENTER();
+diff --git a/ports/esp32/uart.c b/ports/esp32/uart.c
+index 6e00fa3a..62d59505 100644
+--- a/ports/esp32/uart.c
++++ b/ports/esp32/uart.c
+@@ -29,10 +29,13 @@
+ 
+ #include "py/runtime.h"
+ #include "py/mphal.h"
++#include "mphalport.h"
+ #include "uart.h"
+ 
+ #if MICROPY_HW_ENABLE_UART_REPL
+ 
++static volatile bool uart_repl_enabled = true;
++
+ #include <stdio.h>
+ #include "driver/uart.h" // For uart_get_sclk_freq()
+ #include "hal/uart_hal.h"
+@@ -81,6 +84,20 @@ void uart_stdout_init(void) {
+     uart_hal_ena_intr_mask(&repl_hal, UART_INTR_RXFIFO_FULL | UART_INTR_RXFIFO_TOUT);
+ }
+ 
++bool uart_stdout_is_enabled(void) {
++    return uart_repl_enabled;
++}
++
++void uart_stdout_set_enabled(bool enabled) {
++    mp_uint_t atomic_state = MICROPY_BEGIN_ATOMIC_SECTION();
++    uart_repl_enabled = enabled;
++    if (!enabled) {
++        while (ringbuf_get(&stdin_ringbuf) != -1) {
++        }
++    }
++    MICROPY_END_ATOMIC_SECTION(atomic_state);
++}
++
+ int uart_stdout_tx_strn(const char *str, size_t len) {
+     uart_hal_context_t repl_hal = REPL_HAL_DEFN();
+     size_t remaining = len;
+@@ -112,6 +129,9 @@ static void IRAM_ATTR uart_irq_handler(void *arg) {
+     uart_hal_read_rxfifo(&repl_hal, rbuf, &len);
+ 
+     for (int i = 0; i < len; i++) {
++        if (!uart_repl_enabled) {
++            continue;
++        }
+         if (rbuf[i] == mp_interrupt_char) {
+             mp_sched_keyboard_interrupt();
+         } else {
+diff --git a/ports/esp32/uart.h b/ports/esp32/uart.h
+index fe08e268..b3ba8a2d 100644
+--- a/ports/esp32/uart.h
++++ b/ports/esp32/uart.h
+@@ -28,6 +28,8 @@
+ #ifndef MICROPY_INCLUDED_ESP32_UART_H
+ #define MICROPY_INCLUDED_ESP32_UART_H
+ 
++#include <stdbool.h>
++
+ // Whether to enable the REPL on a UART.
+ #ifndef MICROPY_HW_ENABLE_UART_REPL
+ #define MICROPY_HW_ENABLE_UART_REPL (!MICROPY_HW_USB_CDC && !MICROPY_HW_ESP_USB_SERIAL_JTAG)
+@@ -45,6 +47,8 @@
+ 
+ void uart_stdout_init(void);
+ int uart_stdout_tx_strn(const char *str, size_t len);
++bool uart_stdout_is_enabled(void);
++void uart_stdout_set_enabled(bool enabled);
+ 
+ #endif // MICROPY_HW_ENABLE_UART_REPL
+ 

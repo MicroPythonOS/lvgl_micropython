@@ -2,7 +2,7 @@
 
 #ifndef __MICROPY_CONFIG__
 #define __MICROPY_CONFIG__
-#define LV_STDLIB_MPY 254
+#define LV_STDLIB_MPY 254 // very simple implementation, see ext_mod/lvgl/mem_core.c
 
 #ifndef MICROPY_FREETYPE
     #define MICROPY_FREETYPE  0
@@ -14,25 +14,29 @@
     #define MICROPY_SDL  0
 #endif
 #ifndef MICROPY_FFMPEG
-    #define MICROPY_FFMPEG  0
+    #define MICROPY_FFMPEG  0 // works on unix/desktop but not on esp32 (conflicting time.h time_t in /home/user/sources/lvgl_micropython/lib/esp-idf/components/mbedtls/mbedtls/include/mbedtls/platform_time.h)
 #endif
 #ifndef MICROPY_RLOTTIE
-    #define MICROPY_RLOTTIE  0
+    #define MICROPY_RLOTTIE 0
 #endif
 #ifndef MICROPY_TINY_TTF
-    #define MICROPY_TINY_TTF  0
+    #define MICROPY_TINY_TTF  1
 #endif
 #ifndef MICROPY_CACHE_SIZE
-    #define MICROPY_CACHE_SIZE  0
+    //#define MICROPY_CACHE_SIZE  409600 // 50 images of 64x64 pixels at 2 bytes per pixel
+    //#define MICROPY_CACHE_SIZE 921600 // one image of 720x640 pixels at 2 bytes per pixel, or one PNG of 360x320 pixels at 4 bytes per pixel
+    //#define MICROPY_CACHE_SIZE 1320000 // one image of 1100x600 pixels at 2 bytes per pixel
+    //#define MICROPY_CACHE_SIZE 2518040 // one image of 1058x595 pixels at 4 bytes per pixel
+    #define MICROPY_CACHE_SIZE 3686400 // one image of 1280x720 pixels at 4 bytes per pixel (needed to open 1280x720 PNG images in ImageView app)
 #endif
 #ifndef MICROPY_COLOR_DEPTH
-    #define MICROPY_COLOR_DEPTH  32
+    #define MICROPY_COLOR_DEPTH  16
 #endif
 #ifndef MICROPY_FLOAT
     #define MICROPY_FLOAT  0
 #endif
 #ifndef MICROPY_MEM_SIZE
-    #define MICROPY_MEM_SIZE  256
+    #define MICROPY_MEM_SIZE 256
 #endif
 
 #ifndef MICROPY_FAST_MEM
@@ -89,7 +93,7 @@ extern void *mp_lv_roots;
 /* Possible values
  * - LV_STDLIB_BUILTIN:     LVGL's built in implementation
  * - LV_STDLIB_CLIB:        Standard C functions, like malloc, strlen, etc
- * - LV_STDLIB_MICROPYTHON: MicroPython implementation
+ * - LV_STDLIB_MPY:         MicroPython implementation
  * - LV_STDLIB_RTTHREAD:    RT-Thread implementation
  * - LV_STDLIB_CUSTOM:      Implement the functions externally
  */
@@ -216,7 +220,7 @@ extern void *mp_lv_roots;
         * The circumference of 1/4 circle are saved for anti-aliasing
         * radius * 4 bytes are used per circle (the most often used radiuses are saved)
         * 0: to disable caching */
-        #define LV_DRAW_SW_CIRCLE_CACHE_SIZE 4
+        #define LV_DRAW_SW_CIRCLE_CACHE_SIZE 40
     #endif
 
     #define  LV_USE_DRAW_SW_ASM     LV_DRAW_SW_ASM_NONE
@@ -293,7 +297,7 @@ extern void *mp_lv_roots;
  *-----------*/
 
 /*Enable the log module*/
-#define LV_USE_LOG 0
+#define LV_USE_LOG 1
 #if LV_USE_LOG
 
     /*How important log should be added:
@@ -303,11 +307,14 @@ extern void *mp_lv_roots;
     *LV_LOG_LEVEL_ERROR       Only critical issue, when the system may fail
     *LV_LOG_LEVEL_USER        Only logs added by the user
     *LV_LOG_LEVEL_NONE        Do not log anything*/
-    #define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
+    // // 0 is trace, 1 is info, 2 is warn, 3 is error, 4 is user (FPS is here as 'sysmon' user)
+    // trace is useful but logs a LOT for every screen draw...
+    //#define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
+    #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
 
     /*1: Print the log with 'printf';
     *0: User need to register a callback with `lv_log_register_print_cb()`*/
-    #define LV_LOG_PRINTF 0
+    #define LV_LOG_PRINTF 0 // this doesn't seem to print anything to the serial port, so don't use it
 
     /*Set callback to print the logs.
      *E.g `my_print`. The prototype should be `void my_print(lv_log_level_t level, const char * buf)`
@@ -316,23 +323,23 @@ extern void *mp_lv_roots;
 
     /*1: Enable print timestamp;
      *0: Disable print timestamp*/
-    #define LV_LOG_USE_TIMESTAMP 1
+    #define LV_LOG_USE_TIMESTAMP 0
 
     /*1: Print file and line number of the log;
      *0: Do not print file and line number of the log*/
-    #define LV_LOG_USE_FILE_LINE 1
+    #define LV_LOG_USE_FILE_LINE 0
 
 
     /*Enable/disable LV_LOG_TRACE in modules that produces a huge number of logs*/
-    #define LV_LOG_TRACE_MEM        1
-    #define LV_LOG_TRACE_TIMER      1
-    #define LV_LOG_TRACE_INDEV      1
-    #define LV_LOG_TRACE_DISP_REFR  1
-    #define LV_LOG_TRACE_EVENT      1
-    #define LV_LOG_TRACE_OBJ_CREATE 1
-    #define LV_LOG_TRACE_LAYOUT     1
-    #define LV_LOG_TRACE_ANIM       1
-    #define LV_LOG_TRACE_CACHE      1
+    #define LV_LOG_TRACE_MEM        0
+    #define LV_LOG_TRACE_TIMER      0
+    #define LV_LOG_TRACE_INDEV      0
+    #define LV_LOG_TRACE_DISP_REFR  0
+    #define LV_LOG_TRACE_EVENT      0
+    #define LV_LOG_TRACE_OBJ_CREATE 0
+    #define LV_LOG_TRACE_LAYOUT     0
+    #define LV_LOG_TRACE_ANIM       0
+    #define LV_LOG_TRACE_CACHE      0
 
 #endif  /*LV_USE_LOG*/
 
@@ -344,12 +351,14 @@ extern void *mp_lv_roots;
  *If LV_USE_LOG is enabled an error message will be printed on failure*/
 #define LV_USE_ASSERT_NULL          1   /*Check if the parameter is NULL. (Very fast, recommended)*/
 #define LV_USE_ASSERT_MALLOC        1   /*Checks is the memory is successfully allocated or no. (Very fast, recommended)*/
-#define LV_USE_ASSERT_STYLE         0   /*Check if the styles are properly initialized. (Very fast, recommended)*/
+#define LV_USE_ASSERT_STYLE         1   /*Check if the styles are properly initialized. (Very fast, recommended)*/
 #define LV_USE_ASSERT_MEM_INTEGRITY 0   /*Check the integrity of `lv_mem` after critical operations. (Slow)*/
 #define LV_USE_ASSERT_OBJ           0   /*Check the object's type and existence (e.g. not deleted). (Slow)*/
 
 /*Add a custom handler when assert happens e.g. to restart the MCU*/
 #define LV_ASSERT_HANDLER_INCLUDE <stdint.h>
+///home/user/sources/lvgl_micropython/lib/lv_conf.h:353:27: error: implicit declaration of function 'printf' [-Werror=implicit-function-declaration]
+//#define LV_ASSERT_HANDLER printf("custom handler when assert happens e.g. to restart the MCU"); while(1);   /*Halt by default*/
 #define LV_ASSERT_HANDLER while(1);   /*Halt by default*/
 
 /*-------------
@@ -385,7 +394,7 @@ extern void *mp_lv_roots;
 
 /*Default number of image header cache entries. The cache is used to store the headers of images
  *The main logic is like `LV_CACHE_DEF_SIZE` but for image headers.*/
-#define LV_IMAGE_HEADER_CACHE_DEF_CNT 0
+#define LV_IMAGE_HEADER_CACHE_DEF_CNT 24
 
 /*Number of stops allowed per gradient. Increase this to allow more stops.
  *This adds (sizeof(lv_color_t) + 1) bytes per additional stop*/
@@ -492,45 +501,50 @@ extern void *mp_lv_roots;
 
 /*Montserrat fonts with ASCII range and some symbols using bpp = 4
  *https://fonts.google.com/specimen/Montserrat*/
-#define LV_FONT_MONTSERRAT_8  0
-#define LV_FONT_MONTSERRAT_10 0
+#define LV_FONT_MONTSERRAT_8  1
+#define LV_FONT_MONTSERRAT_10 1
 #define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1
-#define LV_FONT_MONTSERRAT_18 0
-#define LV_FONT_MONTSERRAT_20 0
+#define LV_FONT_MONTSERRAT_18 1
+#define LV_FONT_MONTSERRAT_20 1 // compressed saves ~10KB
 #define LV_FONT_MONTSERRAT_22 0
-#define LV_FONT_MONTSERRAT_24 0
+#define LV_FONT_MONTSERRAT_24 1 // compressed saves ~20KB?
 #define LV_FONT_MONTSERRAT_26 0
-#define LV_FONT_MONTSERRAT_28 0
+#define LV_FONT_MONTSERRAT_28 1 // compressed saves ~30KB?
+
+/*
+// These bigger fonts take up a lot of space, and are hardly used, so they are disabled.
+// Apps can scale up smaller fonts, or include them in the app itself and load them at runtime
+*/
 #define LV_FONT_MONTSERRAT_30 0
 #define LV_FONT_MONTSERRAT_32 0
-#define LV_FONT_MONTSERRAT_34 0
+#define LV_FONT_MONTSERRAT_34 0 // compressed saves ~45KB? Removing saves 43KB (used by pavel's cellular)
 #define LV_FONT_MONTSERRAT_36 0
 #define LV_FONT_MONTSERRAT_38 0
-#define LV_FONT_MONTSERRAT_40 0
+#define LV_FONT_MONTSERRAT_40 0 // compressed saves ~57KB, removing saves 53KB (used by Nostr)
 #define LV_FONT_MONTSERRAT_42 0
 #define LV_FONT_MONTSERRAT_44 0
 #define LV_FONT_MONTSERRAT_46 0
-#define LV_FONT_MONTSERRAT_48 0
+#define LV_FONT_MONTSERRAT_48 0 // compressed saves ~89KB removing saves 122KB (used by QuasiNametag)
 
 /*Demonstrate special features*/
 #define LV_FONT_MONTSERRAT_28_COMPRESSED 0  /*bpp = 3*/
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW 0  /*Hebrew, Arabic, Persian letters and all their forms*/
-#define LV_FONT_SIMSUN_14_CJK            0  /*1000 most common CJK radicals*/
-#define LV_FONT_SIMSUN_16_CJK            0  /*1000 most common CJK radicals*/
+#define LV_FONT_SOURCE_HAN_SANS_SC_14_CJK 0  /*1000 most common CJK radicals*/
+#define LV_FONT_SOURCE_HAN_SANS_SC_16_CJK 0  /*1000 most common CJK radicals*/
 
-/*Pixel perfect monospace fonts*/
-#define LV_FONT_UNSCII_8  0
-#define LV_FONT_UNSCII_16 0
+/*Pixel perfect monospace fonts - aren't used and don't have symbols, but take up just 3.9KiB so let's leave them in */
+#define LV_FONT_UNSCII_8  1
+#define LV_FONT_UNSCII_16 1
 
 /*Optionally declare custom fonts here.
  *You can use these fonts as default font too and they will be available globally.
  *E.g. #define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(my_font_1) LV_FONT_DECLARE(my_font_2)*/
-#define LV_FONT_CUSTOM_DECLARE
+//#define LV_FONT_CUSTOM_DECLARE LV_FONT_DECLARE(font_Noto_Sans_sat_emojis_compressed)
 
 /*Always set a default font*/
-#define LV_FONT_DEFAULT &lv_font_montserrat_14
+#define LV_FONT_DEFAULT &lv_font_montserrat_12
 
 /*Enable handling large font and/or fonts with a lot of characters.
  *The limit depends on the font size, font face and bpp.
@@ -538,7 +552,7 @@ extern void *mp_lv_roots;
 #define LV_FONT_FMT_TXT_LARGE 0
 
 /*Enables/disables support for compressed fonts.*/
-#define LV_USE_FONT_COMPRESSED 0
+#define LV_USE_FONT_COMPRESSED 1
 
 /*Enable drawing placeholders when glyph dsc is not found*/
 #define LV_USE_FONT_PLACEHOLDER 1
@@ -606,7 +620,7 @@ extern void *mp_lv_roots;
 
 #define LV_USE_CALENDAR   1
 #if LV_USE_CALENDAR
-    #define LV_CALENDAR_WEEK_STARTS_MONDAY 0
+    #define LV_CALENDAR_WEEK_STARTS_MONDAY 1
     #if LV_CALENDAR_WEEK_STARTS_MONDAY
         #define LV_CALENDAR_DEFAULT_DAY_NAMES {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
     #else
@@ -681,7 +695,7 @@ extern void *mp_lv_roots;
 
 #define LV_USE_TILEVIEW   1
 
-#define LV_USE_WIN        1
+#define LV_USE_WIN        0
 
 /*==================
  * THEMES
@@ -784,10 +798,10 @@ extern void *mp_lv_roots;
 #define LV_USE_LODEPNG 1
 
 /*PNG decoder(libpng) library*/
-#define LV_USE_LIBPNG 0
+#define LV_USE_LIBPNG 0 // lv_libpng.c:14:10: fatal error: png.h: No such file or directory
 
 /*BMP decoder library*/
-#define LV_USE_BMP 1
+#define LV_USE_BMP 0
 
 /* JPG + split JPG decoder library.
  * Split JPG is a custom format optimized for embedded systems. */
@@ -795,13 +809,13 @@ extern void *mp_lv_roots;
 
 /* libjpeg-turbo decoder library.
  * Supports complete JPEG specifications and high-performance JPEG decoding. */
-#define LV_USE_LIBJPEG_TURBO 0
+#define LV_USE_LIBJPEG_TURBO 0  // needs LDFLAGS += -ljpeg in MicroPython's Makefile for this port. Only got it working on unix, not esp32 yet, needs libjpeg probably.
 
-/*GIF decoder library*/
-#define LV_USE_GIF 1
+/*GIF decoder library - disabled because buggy - use animimg or lottie maybe if you want */
+#define LV_USE_GIF 0
 #if LV_USE_GIF
 /*GIF decoder accelerate*/
-#define LV_GIF_CACHE_DECODE_DATA 0
+#define LV_GIF_CACHE_DECODE_DATA 1
 #endif
 
 
@@ -815,7 +829,7 @@ extern void *mp_lv_roots;
 #define LV_USE_QRCODE 1
 
 /*Barcode code library*/
-#define LV_USE_BARCODE 1
+#define LV_USE_BARCODE 0 // don't think this will ever be used
 
 /*FreeType library*/
 #define LV_USE_FREETYPE MICROPY_FREETYPE
@@ -869,19 +883,19 @@ extern void *mp_lv_roots;
 #define LV_USE_SNAPSHOT 1
 
 /*1: Enable system monitor component*/
-#define LV_USE_SYSMON   0
+#define LV_USE_SYSMON   1
 #if LV_USE_SYSMON
     /*Get the idle percentage. E.g. uint32_t my_get_idle(void);*/
     #define LV_SYSMON_GET_IDLE lv_timer_get_idle
 
     /*1: Show CPU usage and FPS count
      * Requires `LV_USE_SYSMON = 1`*/
-    #define LV_USE_PERF_MONITOR 0
+    #define LV_USE_PERF_MONITOR 1
     #if LV_USE_PERF_MONITOR
         #define LV_USE_PERF_MONITOR_POS LV_ALIGN_BOTTOM_RIGHT
 
         /*0: Displays performance data on the screen, 1: Prints performance data using log.*/
-        #define LV_USE_PERF_MONITOR_LOG_MODE 0
+        #define LV_USE_PERF_MONITOR_LOG_MODE 1
     #endif
 
     /*1: Show the used memory and the memory fragmentation
@@ -936,7 +950,7 @@ extern void *mp_lv_roots;
     #define LV_IMGFONT_PATH_MAX_LEN 64
 
     /*1: Use img cache to buffer header information*/
-    #define LV_IMGFONT_USE_IMAGE_CACHE_HEADER 0
+    #define LV_IMGFONT_USE_IMAGE_CACHE_HEADER 1
 #endif
 
 /*1: Enable an observer pattern implementation*/
@@ -944,7 +958,7 @@ extern void *mp_lv_roots;
 
 /*1: Enable Pinyin input method*/
 /*Requires: lv_keyboard*/
-#define LV_USE_IME_PINYIN 1
+#define LV_USE_IME_PINYIN 0
 #if LV_USE_IME_PINYIN
     /*1: Use default thesaurus*/
     /*If you do not use the default thesaurus, be sure to use `lv_ime_pinyin` after setting the thesauruss*/
@@ -962,7 +976,7 @@ extern void *mp_lv_roots;
 
 /*1: Enable file explorer*/
 /*Requires: lv_table*/
-#define LV_USE_FILE_EXPLORER                     0
+#define LV_USE_FILE_EXPLORER                     1
 #if LV_USE_FILE_EXPLORER
     /*Maximum length of path*/
     #define LV_FILE_EXPLORER_PATH_MAX_LEN        (128)

@@ -97,9 +97,12 @@ def build_commands(_, extra_args, script_dir, lv_cflags, board):
                 '-Wno-unused-command-line-argument '
                 '-Wno-missing-field-initializers"'
                 # 'export CPPFLAGS="-I/opt/homebrew/opt/libffi/include"'
-            )
+            ),
         ]
     )
+
+    if REAL_PORT == 'unix':
+        unix_cmd.append('LDFLAGS_EXTRA=-static')  # static binary (all libraries included) so it's more portable
 
     # unix_cmd.extend(extra_args)
 
@@ -453,9 +456,10 @@ def compile(*args):  # NOQA
     dst = f'build/lvgl_micropy_{REAL_PORT}'
     shutil.copyfile(src, dst)
 
-    print(f'compiled binary is {os.path.abspath(os.path.split(dst)[0])}')
+    buildpath = f"{os.path.abspath(os.path.split(dst)[0])}/lvgl_micropy_{REAL_PORT}"
+    print(f'compiled binary is {buildpath}')
     print('You need to make the binary executable by running')
-    print(f'"sudo chmod +x lvgl_micropy_{REAL_PORT}"')
+    print(f'"sudo chmod +x {buildpath}"')
 
 
 def mpy_cross():

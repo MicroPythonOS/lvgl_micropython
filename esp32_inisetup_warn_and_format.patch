@@ -1,0 +1,14 @@
+diff --git a/ports/esp32/modules/inisetup.py b/ports/esp32/modules/inisetup.py
+index 17373185..9ce3d463 100644
+--- a/ports/esp32/modules/inisetup.py
++++ b/ports/esp32/modules/inisetup.py
+@@ -13,7 +13,8 @@ def check_bootsec():
+             break
+     if empty:
+         return True
+-    fs_corrupted()
++    # fs_corrupted()
++    print("WARNING: could not mount filesystem and it doesn't seem to be empty either, formatting anyway!")
+ 
+ 
+ def fs_corrupted():
