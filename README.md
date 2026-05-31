@@ -25,6 +25,7 @@ The MicroPythonOS fork of this repository keeps long-running work split into top
 * `topic/error-handling`: runtime hardening and callback/task exception handling improvements.
 * `topic/fonts`: custom font source updates and related font/symbol changes used by MicroPythonOS.
 * `topic/esp32-uart-repl-runtime`: adds the ESP32 UART REPL runtime-toggle patch file (`esp32_uart_repl_runtime.patch`).
+* `topic/esp32-inisetup-warn-and-format`: Format internal storage if mounting fails instead of hanging (even if not empty)
 
 Typical flow in this fork:
 
