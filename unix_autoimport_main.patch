@@ -1,0 +1,32 @@
+--- a/ports/unix/main.c
++++ b/ports/unix/main.c
+@@ -700,9 +700,26 @@
+     }
+     if (ret == NOTHING_EXECUTED || inspect) {
+         if (isatty(0) || inspect) {
+-            prompt_read_history();
+-            ret = do_repl();
+-            prompt_write_history();
++            if (ret == NOTHING_EXECUTED) {
++                // Auto-import main.py (like ESP32 does on boot)
++                nlr_buf_t nlr;
++                if (nlr_push(&nlr) == 0) {
++                    mp_obj_t import_args[4];
++                    import_args[0] = mp_obj_new_str_from_cstr("main");
++                    import_args[1] = import_args[2] = mp_const_none;
++                    import_args[3] = mp_const_false;
++                    mp_builtin___import__(MP_ARRAY_SIZE(import_args), import_args);
++                    nlr_pop();
++                    ret = 0;
++                } else {
++                    mp_obj_print_exception(&mp_stderr_print, MP_OBJ_FROM_PTR(nlr.ret_val));
++                }
++            }
++            if (ret == NOTHING_EXECUTED || inspect) {
++                prompt_read_history();
++                ret = do_repl();
++                prompt_write_history();
++            }
+         } else {
+             ret = execute_from_lexer(LEX_SRC_STDIN, NULL, MP_PARSE_FILE_INPUT, false);
+         }
