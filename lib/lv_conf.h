@@ -394,7 +394,7 @@ extern void *mp_lv_roots;
 
 /*Default number of image header cache entries. The cache is used to store the headers of images
  *The main logic is like `LV_CACHE_DEF_SIZE` but for image headers.*/
-#define LV_IMAGE_HEADER_CACHE_DEF_CNT 24
+#define LV_IMAGE_HEADER_CACHE_DEF_CNT 64 // around 47 known apps plus some margin
 
 /*Number of stops allowed per gradient. Increase this to allow more stops.
  *This adds (sizeof(lv_color_t) + 1) bytes per additional stop*/
@@ -947,7 +947,7 @@ extern void *mp_lv_roots;
 #define LV_USE_IMGFONT 1
 #if LV_USE_IMGFONT
     /*Imgfont image file path maximum length*/
-    #define LV_IMGFONT_PATH_MAX_LEN 64
+    #define LV_IMGFONT_PATH_MAX_LEN 64 // /builtin/res/emojis/32x32/270C-FE0F.png is 39 characters plus some margin
 
     /*1: Use img cache to buffer header information*/
     #define LV_IMGFONT_USE_IMAGE_CACHE_HEADER 1
