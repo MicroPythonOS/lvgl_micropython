@@ -1288,59 +1288,80 @@ def update_makefile():
 
 
 def update_main():
-    # data = read_file('esp32', MAIN_PATH)
+    # Free the LCD / SPI / I2C bus registries on every MicroPython
+    # soft-reset. Without this, the static bus registries
+    # (machine_hw_spi's `machine_hw_spi_bus_objs[]`, lcd_bus's
+    # `spi_bus_objs`/`spi_bus_count`, etc.) live in .bss and survive the
+    # soft-reset, but the bus objects they point to are GC-allocated and
+    # get wiped by gc_sweep_all(). On the next boot the board file's
+    # `machine.SPI.Bus()` then finds a non-NULL *stale* pointer, reads a
+    # now-MP_OBJ_NULL field through mp_obj_get_int(), and raises
+    # "can't convert  to int" (note the empty type name) — board init
+    # fails until a hard reset clears .bss.
+    # See https://github.com/MicroPythonOS/MicroPythonOS/issues/143
+    #
+    # The deinit_all() helpers all exist; they just were never wired into
+    # the soft-reset path. Inject them at the `soft_reset_exit:` label,
+    # which runs *before* gc_sweep_all(), so the bus objects are still
+    # valid when we tear them down. Order matters: the LCD buses sit on
+    # top of the machine SPI bus, so they (and spi3wire) are released
+    # first, leaving machine_hw_spi_bus_deinit_all() to free the host(s)
+    # and NULL the registry last.
+    data = read_file('esp32', MAIN_PATH)
 
-    # rep_data = [
-    #     '#if SOC_LCD_I80_SUPPORTED',
-    #     '#include "../../../../ext_mod/lcd_bus/esp32_include/i80_bus.h"',
-    #     '#endif',
-    #     '',
-    #     '#if SOC_LCD_RGB_SUPPORTED',
-    #     '#include "../../../../ext_mod/lcd_bus/esp32_include/rgb_bus.h"',
-    #     '#endif',
-    #     '',
-    #     '#include "../../../../ext_mod/lcd_bus/esp32_include/spi_bus.h"',
-    #     '#include "../../../../ext_mod/lcd_bus/esp32_include/i2c_bus.h"',
-    #     '#include "../../../../ext_mod/spi3wire/include/spi3wire.h"',
-    #     '#include "../../../../micropy_updates/common/mp_spi_common.h"',
-    #     '',
-    #     '#if MICROPY_BLUETOOTH_NIMBLE'
-    # ]
+    if 'mp_machine_hw_spi_bus_deinit_all' in data:
+        # already patched (idempotent re-run)
+        return
 
-    # data = data.replace(
-    #     '#if MICROPY_BLUETOOTH_NIMBLE',
-    #     '\n'.join(rep_data),
-    #     1
-    # )
+    rep_data = [
+        '#if SOC_LCD_I80_SUPPORTED',
+        '#include "../../../../ext_mod/lcd_bus/esp32_include/i80_bus.h"',
+        '#endif',
+        '',
+        '#if SOC_LCD_RGB_SUPPORTED',
+        '#include "../../../../ext_mod/lcd_bus/esp32_include/rgb_bus.h"',
+        '#endif',
+        '',
+        '#include "../../../../ext_mod/lcd_bus/esp32_include/spi_bus.h"',
+        '#include "../../../../ext_mod/lcd_bus/esp32_include/i2c_bus.h"',
+        '#include "../../../../ext_mod/spi3wire/include/spi3wire.h"',
+        '#include "../../../../micropy_updates/common/mp_spi_common.h"',
+        '',
+        '#if MICROPY_BLUETOOTH_NIMBLE'
+    ]
 
-    # rep_data = [
-    #     'soft_reset_exit:',
-    #     ' ',
-    #     '#if SOC_LCD_I80_SUPPORTED',
-    #     '    mp_lcd_i80_bus_deinit_all();',
-    #     '#endif',
-    #     '    ',
-    #     '#if SOC_LCD_RGB_SUPPORTED',
-    #     '   mp_lcd_rgb_bus_deinit_all();',
-    #     '#endif',
-    #     '    ',
-    #     '    mp_lcd_spi_bus_deinit_all();',
-    #     '    ',
-    #     '    mp_lcd_i2c_bus_deinit_all();',
-    #     '    ',
-    #     '    mp_spi3wire_deinit_all();',
-    #     '    ',
-    #     '    mp_machine_hw_spi_bus_deinit_all();'
-    # ]
+    data = data.replace(
+        '#if MICROPY_BLUETOOTH_NIMBLE',
+        '\n'.join(rep_data),
+        1
+    )
 
-    # data = data.replace(
-    #     'soft_reset_exit:',
-    #     '\n'.join(rep_data)
-    # )
+    rep_data = [
+        'soft_reset_exit:',
+        ' ',
+        '#if SOC_LCD_I80_SUPPORTED',
+        '    mp_lcd_i80_bus_deinit_all();',
+        '#endif',
+        '    ',
+        '#if SOC_LCD_RGB_SUPPORTED',
+        '   mp_lcd_rgb_bus_deinit_all();',
+        '#endif',
+        '    ',
+        '    mp_lcd_spi_bus_deinit_all();',
+        '    ',
+        '    mp_lcd_i2c_bus_deinit_all();',
+        '    ',
+        '    mp_spi3wire_deinit_all();',
+        '    ',
+        '    mp_machine_hw_spi_bus_deinit_all();'
+    ]
 
-    # write_file(MAIN_PATH, data)
+    data = data.replace(
+        'soft_reset_exit:',
+        '\n'.join(rep_data)
+    )
 
-    pass
+    write_file(MAIN_PATH, data)
 
 
 def build_sdkconfig(*args):
