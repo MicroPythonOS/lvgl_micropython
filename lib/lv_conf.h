@@ -801,7 +801,7 @@ extern void *mp_lv_roots;
 #define LV_USE_LIBPNG 0 // lv_libpng.c:14:10: fatal error: png.h: No such file or directory
 
 /*BMP decoder library*/
-#define LV_USE_BMP 0
+#define LV_USE_BMP 1
 
 /* JPG + split JPG decoder library.
  * Split JPG is a custom format optimized for embedded systems. */
