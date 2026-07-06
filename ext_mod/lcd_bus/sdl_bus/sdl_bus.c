@@ -369,8 +369,13 @@
                 if (self->mouse_callback == mp_const_none) return 0;
 
                 self->pointer_event.state = event->type == SDL_FINGERUP ? 0 : 1;
-                self->pointer_event.x = (int32_t)event->tfinger.x;
-                self->pointer_event.y = (int32_t)event->tfinger.y;
+
+                /* SDL touch coordinates are normalized (0..1); convert them
+                 * to window pixel coordinates like the mouse events use. */
+                int win_w, win_h;
+                SDL_GetWindowSize(self->window, &win_w, &win_h);
+                self->pointer_event.x = (int32_t)(event->tfinger.x * (float)win_w);
+                self->pointer_event.y = (int32_t)(event->tfinger.y * (float)win_h);
 
                 mp_obj_t res1[6];
                 res1[0] = mp_obj_new_int_from_uint(event->type);
