@@ -1,0 +1,11 @@
+--- a/ports/esp32/network_wlan.c
++++ b/ports/esp32/network_wlan.c
+@@ -247,7 +247,8 @@ void esp_initialise_wifi(void) {
+         #endif
+         ESP_LOGD("modnetwork", "Initializing WiFi");
+         esp_exceptions(esp_wifi_init(&cfg));
+         esp_exceptions(esp_wifi_set_storage(WIFI_STORAGE_RAM));
++        esp_exceptions(esp_wifi_set_country_code("JP", true));
+ 
+         ESP_LOGD("modnetwork", "Initialized");
+         wifi_initialized = 1;
