@@ -1,0 +1,13 @@
+diff --git a/tools/mpremote/mpremote/main.py b/tools/mpremote/mpremote/main.py
+index 59e0b31e..9d1c2a48 100644
+--- a/tools/mpremote/mpremote/main.py
++++ b/tools/mpremote/mpremote/main.py
+@@ -532,7 +532,7 @@ class State:
+     def __init__(self):
+         self.transport = None
+         self._did_action = False
+-        self._auto_soft_reset = True
++        self._auto_soft_reset = False
+ 
+     def did_action(self):
+         self._did_action = True
