@@ -50,6 +50,7 @@
         bool quad;
         bool octal;
         bool active;
+        bool locked;
         mp_obj_t cs;
         mp_machine_hw_spi_bus_obj_t *spi_bus;
         void *user_data;

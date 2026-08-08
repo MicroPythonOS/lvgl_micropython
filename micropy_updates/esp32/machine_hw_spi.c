@@ -167,6 +167,12 @@ static void machine_hw_spi_device_deinit_callback(mp_machine_hw_spi_device_obj_t
 {
     if (!self->active) return;
 
+    if (self->locked) {
+        spi_device_handle_t spi_device = (spi_device_handle_t)self->user_data;
+        spi_device_release_bus(spi_device);
+        self->locked = false;
+    }
+
     switch (spi_bus_remove_device((spi_device_handle_t)self->user_data)) {
         case ESP_ERR_INVALID_ARG:
             mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("invalid configuration"));
@@ -287,6 +293,34 @@ static mp_obj_t machine_hw_spi_bus_deinit(mp_obj_t self_in)
 MP_DEFINE_CONST_FUN_OBJ_1(machine_hw_spi_bus_deinit_obj, machine_hw_spi_bus_deinit);
 
 
+static mp_obj_t machine_hw_spi_device_lock(mp_obj_t self_in) {
+    mp_machine_hw_spi_device_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (self->locked) {
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("SPI device already locked"));
+    }
+    spi_device_handle_t spi_device = (spi_device_handle_t)self->user_data;
+    spi_device_acquire_bus(spi_device, portMAX_DELAY);
+    self->locked = true;
+    return mp_const_none;
+}
+
+MP_DEFINE_CONST_FUN_OBJ_1(machine_hw_spi_device_lock_obj, machine_hw_spi_device_lock);
+
+
+static mp_obj_t machine_hw_spi_device_unlock(mp_obj_t self_in) {
+    mp_machine_hw_spi_device_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (!self->locked) {
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("SPI device not locked"));
+    }
+    spi_device_handle_t spi_device = (spi_device_handle_t)self->user_data;
+    spi_device_release_bus(spi_device);
+    self->locked = false;
+    return mp_const_none;
+}
+
+MP_DEFINE_CONST_FUN_OBJ_1(machine_hw_spi_device_unlock_obj, machine_hw_spi_device_unlock);
+
+
 static void machine_hw_spi_device_transfer(mp_obj_base_t *self_in, size_t len, const uint8_t *src, uint8_t *dest)
 {
     mp_machine_hw_spi_device_obj_t *self = MP_OBJ_TO_PTR(self_in);
@@ -301,7 +335,9 @@ static void machine_hw_spi_device_transfer(mp_obj_base_t *self_in, size_t len, c
     }
 
     spi_device_handle_t spi_device = (spi_device_handle_t)self->user_data;
-    spi_device_acquire_bus(spi_device, portMAX_DELAY);
+    if (!self->locked) {
+        spi_device_acquire_bus(spi_device, portMAX_DELAY);
+    }
 
     // Round to nearest whole set of bits
     int bits_to_send = len * 8 / self->bits * self->bits;
@@ -389,7 +425,9 @@ static void machine_hw_spi_device_transfer(mp_obj_base_t *self_in, size_t len, c
         MP_THREAD_GIL_ENTER();
     }
 
-    spi_device_release_bus(spi_device);
+    if (!self->locked) {
+        spi_device_release_bus(spi_device);
+    }
 }
 
 /******************************************************************************/
@@ -684,15 +722,62 @@ mp_obj_t machine_hw_spi_device_make_new(const mp_obj_type_t *type, size_t n_args
 
     mp_machine_hw_spi_bus_add_device(self);
     self->active = true;
+    self->locked = false;
 
     return MP_OBJ_FROM_PTR(self);
 }
 
 
+static void machine_hw_spi_device_deinit_safe(mp_obj_base_t *self_in) {
+    mp_machine_hw_spi_device_obj_t *self = (mp_machine_hw_spi_device_obj_t *)self_in;
+    if (self->locked) {
+        spi_device_handle_t spi_device = (spi_device_handle_t)self->user_data;
+        spi_device_release_bus(spi_device);
+        self->locked = false;
+    }
+    machine_hw_spi_device_deinit_internal(self);
+}
+
+
+static mp_obj_t machine_hw_spi_device_init_wrapper(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+    mp_obj_base_t *s = (mp_obj_base_t *)MP_OBJ_TO_PTR(args[0]);
+    mp_machine_spi_p_t *spi_p = (mp_machine_spi_p_t *)MP_OBJ_TYPE_GET_SLOT(s->type, protocol);
+    spi_p->init(s, n_args - 1, args + 1, kw_args);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_KW(machine_hw_spi_device_init_obj, 1, machine_hw_spi_device_init_wrapper);
+
+static mp_obj_t machine_hw_spi_device_deinit_wrapper(mp_obj_t self) {
+    mp_obj_base_t *s = (mp_obj_base_t *)MP_OBJ_TO_PTR(self);
+    mp_machine_spi_p_t *spi_p = (mp_machine_spi_p_t *)MP_OBJ_TYPE_GET_SLOT(s->type, protocol);
+    if (spi_p->deinit != NULL) {
+        spi_p->deinit(s);
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(machine_hw_spi_device_deinit_obj, machine_hw_spi_device_deinit_wrapper);
+
+
 static const mp_machine_spi_p_t machine_hw_spi_device_p = {
-    .deinit = machine_hw_spi_device_deinit,
+    .deinit = machine_hw_spi_device_deinit_safe,
     .transfer = machine_hw_spi_device_transfer,
 };
+
+
+static const mp_rom_map_elem_t machine_hw_spi_device_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&machine_hw_spi_device_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&machine_hw_spi_device_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_machine_spi_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_machine_spi_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_machine_spi_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write_readinto), MP_ROM_PTR(&mp_machine_spi_write_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_MSB), MP_ROM_INT(MICROPY_PY_MACHINE_SPI_MSB) },
+    { MP_ROM_QSTR(MP_QSTR_LSB), MP_ROM_INT(MICROPY_PY_MACHINE_SPI_LSB) },
+    { MP_ROM_QSTR(MP_QSTR_lock), MP_ROM_PTR(&machine_hw_spi_device_lock_obj) },
+    { MP_ROM_QSTR(MP_QSTR_unlock), MP_ROM_PTR(&machine_hw_spi_device_unlock_obj) },
+};
+
+MP_DEFINE_CONST_DICT(machine_hw_spi_device_locals_dict, machine_hw_spi_device_locals_dict_table);
 
 
 MP_DEFINE_CONST_OBJ_TYPE(
@@ -701,7 +786,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     MP_TYPE_FLAG_NONE,
     make_new, machine_hw_spi_device_make_new,
     protocol, &machine_hw_spi_device_p,
-    locals_dict, &mp_machine_spi_locals_dict
+    locals_dict, &machine_hw_spi_device_locals_dict
 );
 
 
