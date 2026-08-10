@@ -390,11 +390,9 @@ static void machine_hw_spi_device_transfer(mp_obj_base_t *self_in, size_t len, c
 
             if (src != NULL) {
                 transaction->tx_buffer = src + offset;
-                transaction->flags |= SPI_TRANS_USE_TXDATA;
             }
             if (dest != NULL) {
                 transaction->rx_buffer = dest + offset;
-                transaction->flags |= SPI_TRANS_USE_RXDATA;
             }
 
             if (self->dual) {
