@@ -1,11 +1,21 @@
+diff --git a/ports/esp32/network_wlan.c b/ports/esp32/network_wlan.c
 --- a/ports/esp32/network_wlan.c
 +++ b/ports/esp32/network_wlan.c
-@@ -247,7 +247,8 @@ void esp_initialise_wifi(void) {
-         #endif
-         ESP_LOGD("modnetwork", "Initializing WiFi");
+@@ -249,6 +249,17 @@ void esp_initialise_wifi(void) {
          esp_exceptions(esp_wifi_init(&cfg));
          esp_exceptions(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-+        esp_exceptions(esp_wifi_set_country_code("JP", true));
  
++        {
++            wifi_country_t country = {
++                .cc = "JP",
++                .schan = 1,
++                .nchan = 14,
++                .max_tx_power = 0,
++                .policy = WIFI_COUNTRY_POLICY_MANUAL,
++            };
++            esp_exceptions(esp_wifi_set_country(&country));
++        }
++
          ESP_LOGD("modnetwork", "Initialized");
          wifi_initialized = 1;
+     }
