@@ -1,0 +1,21 @@
+diff --git a/ports/esp32/network_wlan.c b/ports/esp32/network_wlan.c
+--- a/ports/esp32/network_wlan.c
++++ b/ports/esp32/network_wlan.c
+@@ -725,6 +725,17 @@ static mp_obj_t network_wlan_config(size_t n_args, const mp_obj_t *args, mp_map_
+             val = MP_OBJ_NEW_SMALL_INT(ps_type);
+             break;
+         }
++        case MP_QSTR_country: {
++            wifi_country_t wc;
++            esp_exceptions(esp_wifi_get_country(&wc));
++            mp_obj_t items[3] = {
++                mp_obj_new_str(wc.cc, strlen(wc.cc)),
++                MP_OBJ_NEW_SMALL_INT(wc.schan),
++                MP_OBJ_NEW_SMALL_INT(wc.nchan),
++            };
++            val = mp_obj_new_tuple(3, items);
++            break;
++        }
+         default:
+             goto unknown;
+     }
