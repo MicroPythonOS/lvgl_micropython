@@ -1,0 +1,19 @@
+diff --git a/py/compile.c b/py/compile.c
+index 6d7e9c4a1..5f820f5aa 100644
+--- a/py/compile.c
++++ b/py/compile.c
+@@ -853,6 +853,14 @@ static bool compile_built_in_decorator(compiler_t *comp, size_t name_len, mp_par
+         *emit_options = MP_EMIT_OPT_NATIVE_PYTHON;
+     } else if (attr == MP_QSTR_viper) {
+         *emit_options = MP_EMIT_OPT_VIPER;
++    #else
++    } else if (attr == MP_QSTR_native || attr == MP_QSTR_viper) {
++        // MPOS patch: this build has no native emitter (e.g. the unix port
++        // on aarch64/macOS), so treat these optimization hints as bytecode
++        // instead of raising SyntaxError. Otherwise any runtime-loaded app
++        // using @micropython.native/@micropython.viper fails to import on
++        // desktop builds.
++        *emit_options = MP_EMIT_OPT_BYTECODE;
+     #endif
+         #if MICROPY_EMIT_INLINE_ASM
+     #if MICROPY_DYNAMIC_COMPILER
