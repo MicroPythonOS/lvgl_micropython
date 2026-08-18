@@ -42,6 +42,11 @@ LVGL in lib/lvgl/scripts/built_in_font/).
 
 Notes:
 
+- Sizes 10-28 are RLE-compressed (no `--no-compress`), which needs
+  `LV_USE_FONT_COMPRESSED` (already enabled in lib/lv_conf.h) and saves
+  ~19 KB of flash for 10-18 on top of the long-compressed 20/24/28.
+  The larger disabled sizes and the subpx variant remain uncompressed.
+
 - `lv_font_montserrat_14_aligned.c` is intentionally not regenerated:
   it is an ASCII-only test font (range 0x20-0x7F,0xB0,0x2022).
 - Each generated .c file embeds the full lv_font_conv command in its

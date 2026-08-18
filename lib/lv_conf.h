@@ -500,18 +500,22 @@ extern void *mp_lv_roots;
  *===================*/
 
 /*Montserrat fonts with ASCII range and some symbols using bpp = 4
- *https://fonts.google.com/specimen/Montserrat*/
+ *https://fonts.google.com/specimen/Montserrat
+ *All enabled sizes except 8 are custom MicroPythonOS builds from
+ *lib_lvgl_src_font/ and use RLE compression (LV_USE_FONT_COMPRESSED):
+ *20/24/28 have shipped compressed for a while; 10-18 were switched too,
+ *saving ~19 KB of flash total.*/
 #define LV_FONT_MONTSERRAT_8  1
 #define LV_FONT_MONTSERRAT_10 1
 #define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1
 #define LV_FONT_MONTSERRAT_18 1
-#define LV_FONT_MONTSERRAT_20 1 // compressed saves ~10KB
+#define LV_FONT_MONTSERRAT_20 1
 #define LV_FONT_MONTSERRAT_22 0
-#define LV_FONT_MONTSERRAT_24 1 // compressed saves ~20KB?
+#define LV_FONT_MONTSERRAT_24 1
 #define LV_FONT_MONTSERRAT_26 0
-#define LV_FONT_MONTSERRAT_28 1 // compressed saves ~30KB?
+#define LV_FONT_MONTSERRAT_28 1
 
 /*
 // These bigger fonts take up a lot of space, and are hardly used, so they are disabled.
