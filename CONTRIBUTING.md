@@ -11,13 +11,13 @@ Conventions:
   long-running work lives on `topic/<name>` branches (see the
   ["MicroPythonOS Branching Model"](README.md#micropythonos-branching-model)
   section in the README for the current list and the merge flow).
-- **Build-time patches**: changes that MicroPythonOS applies to the
-  MicroPython/lvgl sources at build time are committed as `.patch` files in
-  the repo root (e.g. `unix_autoimport_main.patch`) and wired up in
-  MicroPythonOS's `scripts/build_mpos.sh`. If your change is a patch like
-  this, add the `.patch` file here and open a companion PR in
-  [MicroPythonOS](https://github.com/MicroPythonOS/MicroPythonOS) that
-  applies it.
+- **Build-time patches**: changes that MicroPythonOS applies at build time
+  (to `lib/micropython`, `lib/lvgl`, or this repo's own files such as
+  `builder/`) are committed as `.patch` files in the repo root and applied by
+  MicroPythonOS's `scripts/build_mpos.sh` — add the `.patch` here and open a
+  companion PR there. The mechanism, the current list, and the
+  add/update/verify workflow are documented once in the MicroPythonOS docs:
+  [Build-time Patches](https://docs.micropythonos.com/os-development/build-patches/).
 - **Custom fonts**: regenerate via `lib_lvgl_src_font/regenerate_fonts.sh`
   (see `lib_lvgl_src_font/README.md`); don't hand-edit generated `.c` files.
 - **`main` changes**: only cross-cutting documentation belongs there;
