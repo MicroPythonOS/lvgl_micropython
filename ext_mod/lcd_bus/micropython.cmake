@@ -19,6 +19,7 @@ if(ESP_PLATFORM)
         ${CMAKE_CURRENT_LIST_DIR}/esp32_src/rgb_bus.c
         ${CMAKE_CURRENT_LIST_DIR}/esp32_src/rgb_bus_rotation.c
         ${CMAKE_CURRENT_LIST_DIR}/esp32_src/rgb565_dither.c
+        ${CMAKE_CURRENT_LIST_DIR}/esp32_src/dsi_bus.c
     )
 
     # gets esp_lcd include paths
