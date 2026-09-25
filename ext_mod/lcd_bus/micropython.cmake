@@ -32,6 +32,17 @@ if(ESP_PLATFORM)
         list(APPEND LCD_INCLUDES ${ESP_LCD_INCLUDES})
     endif()
 
+    # the DSI bus rotates with the PPA where the chip has one (ESP32-P4)
+    if(CONFIG_SOC_PPA_SUPPORTED)
+        idf_component_get_property(ESP_PPA_INCLUDES esp_driver_ppa INCLUDE_DIRS)
+        idf_component_get_property(ESP_PPA_DIR esp_driver_ppa COMPONENT_DIR)
+
+        if(ESP_PPA_INCLUDES)
+            list(TRANSFORM ESP_PPA_INCLUDES PREPEND ${ESP_PPA_DIR}/)
+            list(APPEND LCD_INCLUDES ${ESP_PPA_INCLUDES})
+        endif()
+    endif()
+
 else()
     set(LCD_INCLUDES
         ${CMAKE_CURRENT_LIST_DIR}

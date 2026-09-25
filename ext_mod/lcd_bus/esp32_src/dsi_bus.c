@@ -38,6 +38,12 @@
     #include "hal/lcd_types.h"
     #include "esp_lcd_mipi_dsi.h"
     #include "esp_ldo_regulator.h"
+    #include "hal/cache_hal.h"
+    #include "hal/cache_ll.h"
+
+    #if SOC_PPA_SUPPORTED
+        #include "driver/ppa.h"
+    #endif
 
 
     // Prefix of ESP-IDF's private esp_lcd_dpi_panel_t (esp_lcd/dsi/esp_lcd_panel_dpi.c),
@@ -68,6 +74,14 @@
     {
         const uint8_t *p = (const uint8_t *)buf;
         return fb != NULL && p != NULL && p >= fb && p < fb + self->buffer_size;
+    }
+
+
+    // frame buffers (and the PPA's output) have to be cache-line aligned
+    static uint32_t dsi_cache_line_size(void)
+    {
+        uint32_t line = cache_hal_get_cache_line_size(CACHE_LL_LEVEL_EXT_MEM, CACHE_TYPE_DATA);
+        return line ? line : 64;
     }
 
 
@@ -107,7 +121,8 @@
             ARG_vsync_pulse_width,
             ARG_dpi_clock_freq,
             ARG_phy_ldo_channel,
-            ARG_phy_ldo_voltage_mv
+            ARG_phy_ldo_voltage_mv,
+            ARG_rotation
         };
 
         const mp_arg_t make_new_args[] = {
@@ -123,7 +138,8 @@
             { MP_QSTR_vsync_pulse_width,  MP_ARG_INT  | MP_ARG_KW_ONLY, { .u_int = 1       } },
             { MP_QSTR_dpi_clock_freq,     MP_ARG_INT  | MP_ARG_KW_ONLY, { .u_int = 0       } },  // DPI pixel clock, MHz; 0 = same number as freq
             { MP_QSTR_phy_ldo_channel,    MP_ARG_INT  | MP_ARG_KW_ONLY, { .u_int = -1      } },  // internal LDO channel powering the DSI PHY (ESP32-P4 boards: 3), -1 = not managed here
-            { MP_QSTR_phy_ldo_voltage_mv, MP_ARG_INT  | MP_ARG_KW_ONLY, { .u_int = 2500    } }
+            { MP_QSTR_phy_ldo_voltage_mv, MP_ARG_INT  | MP_ARG_KW_ONLY, { .u_int = 2500    } },
+            { MP_QSTR_rotation,           MP_ARG_INT  | MP_ARG_KW_ONLY, { .u_int = 0       } }   // 0/90/180/270 degrees (LVGL's sense); the PPA rotates every frame into the panel
         };
 
         mp_arg_val_t args[MP_ARRAY_SIZE(make_new_args)];
@@ -166,6 +182,18 @@
         self->phy_ldo_channel = (int)args[ARG_phy_ldo_channel].u_int;
         self->phy_ldo_voltage_mv = (int)args[ARG_phy_ldo_voltage_mv].u_int;
 
+        self->rotation = (int)args[ARG_rotation].u_int;
+        if (self->rotation != 0 && self->rotation != 90 && self->rotation != 180 && self->rotation != 270) {
+            mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("rotation must be 0, 90, 180 or 270 (%d)"), self->rotation);
+            return mp_const_none;
+        }
+        #if !SOC_PPA_SUPPORTED
+        if (self->rotation != 0) {
+            mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("rotation needs a PPA (pixel processing accelerator), this chip has none"));
+            return mp_const_none;
+        }
+        #endif
+
         LCD_DEBUG_PRINT("bus_id=%d\n", self->bus_config.bus_id)
         LCD_DEBUG_PRINT("num_data_lanes=%d\n", self->bus_config.num_data_lanes)
         LCD_DEBUG_PRINT("lane_bit_rate_mbps=%d\n",self->bus_config.lane_bit_rate_mbps)
@@ -178,6 +206,7 @@
         LCD_DEBUG_PRINT("vsync_back_porch=%d\n", self->panel_config.video_timing.vsync_back_porch)
         LCD_DEBUG_PRINT("vsync_pulse_width=%d\n", self->panel_config.video_timing.vsync_pulse_width)
         LCD_DEBUG_PRINT("phy_ldo_channel=%d\n", self->phy_ldo_channel)
+        LCD_DEBUG_PRINT("rotation=%d\n", self->rotation)
 
         self->panel_io_handle.get_lane_count = &dsi_get_lane_count;
         self->panel_io_handle.del = &dsi_del;
@@ -234,6 +263,25 @@
 
         // LVGL renders in the frame buffers' own byte order; nothing here to swap.
         self->rgb565_byte_swap = false;
+        self->bpp = bpp;
+
+        if (self->rotation == 90 || self->rotation == 270) {
+            self->lvgl_width = (uint32_t)height;
+            self->lvgl_height = (uint32_t)width;
+        } else {
+            self->lvgl_width = (uint32_t)width;
+            self->lvgl_height = (uint32_t)height;
+        }
+
+        if (self->rotation != 0) {
+            if (bpp == 18) {
+                mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("rotation works with 16 and 24 bits per pixel, not 18"));
+                return LCD_ERR_INVALID_ARG;
+            }
+            // the rotated frame goes into the panel's back buffer while the
+            // front one is scanned out, whatever LVGL's own buffering is
+            self->panel_config.num_fbs = 2;
+        }
 
         self->panel_config.video_timing.h_size = (uint32_t)width;
         self->panel_config.video_timing.v_size = (uint32_t)height;
@@ -302,21 +350,45 @@
             return ret;
         }
 
-        // Point the buffers handed out by allocate_framebuffer() at the DPI
-        // panel's frame buffers and drop the interim allocations.
         dpi_panel_t *dpi_panel = __containerof((esp_lcd_panel_t *)self->panel_handle, dpi_panel_t, base);
+        self->panel_fbs[0] = dpi_panel->fbs[0];
+        self->panel_fbs[1] = self->panel_config.num_fbs == 2 ? dpi_panel->fbs[1] : NULL;
 
-        heap_caps_free(self->view1->items);
-        self->view1->items = (void *)dpi_panel->fbs[0];
-        self->view1->len = self->buffer_size;
+        if (self->rotation == 0) {
+            // Point the buffers handed out by allocate_framebuffer() at the DPI
+            // panel's frame buffers and drop the interim allocations: LVGL
+            // renders straight into what the panel scans out.
+            heap_caps_free(self->view1->items);
+            self->view1->items = (void *)self->panel_fbs[0];
+            self->view1->len = self->buffer_size;
 
-        if (self->view2 != NULL) {
-            heap_caps_free(self->view2->items);
-            self->view2->items = (void *)dpi_panel->fbs[1];
-            self->view2->len = self->buffer_size;
+            if (self->view2 != NULL) {
+                heap_caps_free(self->view2->items);
+                self->view2->items = (void *)self->panel_fbs[1];
+                self->view2->len = self->buffer_size;
+            }
+        } else {
+            #if SOC_PPA_SUPPORTED
+            // LVGL keeps its own (logical, rotated) buffers; each finished
+            // update is rotated into the panel's back buffer by the PPA.
+            ppa_client_config_t ppa_cfg = {
+                .oper_type = PPA_OPERATION_SRM,
+                .max_pending_trans_num = 1,
+            };
+            ret = ppa_register_client(&ppa_cfg, &self->ppa_client);
+
+            if (ret != 0) {
+                mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("%d(ppa_register_client)"), ret);
+                return ret;
+            }
+
+            uint32_t line = dsi_cache_line_size();
+            self->fb_size_aligned = (full_frame_size + line - 1) / line * line;
+            self->back_fb_index = 1;
+            #endif
         }
 
-        LCD_DEBUG_PRINT("fb1=%p fb2=%p\n", self->view1->items, self->view2 != NULL ? self->view2->items : NULL)
+        LCD_DEBUG_PRINT("fb1=%p fb2=%p rotation=%d\n", self->view1->items, self->view2 != NULL ? self->view2->items : NULL, self->rotation)
 
         return LCD_OK;
     }
@@ -337,19 +409,34 @@
             }
             self->panel_handle = NULL;
             self->panel_started = false;
+            self->panel_fbs[0] = NULL;
+            self->panel_fbs[1] = NULL;
 
-            // the frame buffers went with the panel
+            // unrotated: the frame buffers went with the panel; rotated: they are ours
             if (self->view1 != NULL) {
+                if (self->rotation != 0) {
+                    heap_caps_free(self->view1->items);
+                }
                 self->view1->items = NULL;
                 self->view1->len = 0;
                 self->view1 = NULL;
             }
             if (self->view2 != NULL) {
+                if (self->rotation != 0) {
+                    heap_caps_free(self->view2->items);
+                }
                 self->view2->items = NULL;
                 self->view2->len = 0;
                 self->view2 = NULL;
             }
         }
+
+        #if SOC_PPA_SUPPORTED
+        if (self->ppa_client != NULL) {
+            ppa_unregister_client(self->ppa_client);
+            self->ppa_client = NULL;
+        }
+        #endif
 
         if (self->panel_io_handle.panel_io != NULL) {
             ret = esp_lcd_panel_io_del(self->panel_io_handle.panel_io);
@@ -450,7 +537,7 @@
         // A real buffer for now, so the memoryview is always valid; once the
         // bus is initialized it is repointed at the frame buffer the DPI panel
         // driver allocated itself and this one is freed again (dsi_init).
-        void *buf = heap_caps_calloc(1, size, caps);
+        void *buf = heap_caps_aligned_calloc(dsi_cache_line_size(), 1, size, caps);
 
         if (buf == NULL) {
             mp_raise_msg_varg(&mp_type_MemoryError, MP_ERROR_TEXT("Not enough memory available (%lu)"), size);
@@ -501,6 +588,90 @@
             }
             self->panel_started = true;
         }
+
+        #if SOC_PPA_SUPPORTED
+        if (self->rotation != 0) {
+            if (!last_update) {
+                // more areas of this update follow; LVGL's buffer is complete
+                // only after the last one, nothing to rotate yet
+                self->trans_done = true;
+
+                if (self->callback != mp_const_none && mp_obj_is_callable(self->callback)) {
+                    mp_call_function_n_kw(self->callback, 0, 0, NULL);
+                }
+                return LCD_OK;
+            }
+
+            // LVGL's buffer (the one this area lives in) holds the whole
+            // logical picture: rotate all of it into the panel's back buffer.
+            const uint8_t *base = NULL;
+            if (self->view1 != NULL && dsi_buf_in_fb(self, (const uint8_t *)self->view1->items, color)) {
+                base = (const uint8_t *)self->view1->items;
+            } else if (self->view2 != NULL && dsi_buf_in_fb(self, (const uint8_t *)self->view2->items, color)) {
+                base = (const uint8_t *)self->view2->items;
+            } else {
+                mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("flushed buffer is not a DSIBus frame buffer"));
+                return LCD_ERR_INVALID_ARG;
+            }
+
+            uint8_t *dst = self->panel_fbs[self->back_fb_index];
+            ppa_srm_color_mode_t cm = self->bpp == 16 ? PPA_SRM_COLOR_MODE_RGB565 : PPA_SRM_COLOR_MODE_RGB888;
+
+            ppa_srm_oper_config_t op = { 0 };
+            op.in.buffer = base;
+            op.in.pic_w = self->lvgl_width;
+            op.in.pic_h = self->lvgl_height;
+            op.in.block_w = self->lvgl_width;
+            op.in.block_h = self->lvgl_height;
+            op.in.block_offset_x = 0;
+            op.in.block_offset_y = 0;
+            op.in.srm_cm = cm;
+            op.out.buffer = dst;
+            op.out.buffer_size = self->fb_size_aligned;
+            op.out.pic_w = self->panel_config.video_timing.h_size;
+            op.out.pic_h = self->panel_config.video_timing.v_size;
+            op.out.block_offset_x = 0;
+            op.out.block_offset_y = 0;
+            op.out.srm_cm = cm;
+            // LVGL's rotation and the PPA's are both counter-clockwise
+            op.rotation_angle = self->rotation == 90 ? PPA_SRM_ROTATION_ANGLE_90 :
+                                self->rotation == 180 ? PPA_SRM_ROTATION_ANGLE_180 :
+                                PPA_SRM_ROTATION_ANGLE_270;
+            op.scale_x = 1.0f;
+            op.scale_y = 1.0f;
+            op.mode = PPA_TRANS_MODE_BLOCKING;
+
+            ret = ppa_do_scale_rotate_mirror(self->ppa_client, &op);
+
+            if (ret != 0) {
+                mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("%d(ppa_do_scale_rotate_mirror)"), ret);
+                return ret;
+            }
+
+            self->trans_done = false;
+            self->transmitting_buf = NULL;
+
+            // whole-buffer "draw": cache write-back plus the swap to this buffer
+            // at the next frame boundary; the refresh-done interrupt reports it
+            ret = esp_lcd_panel_draw_bitmap(
+                self->panel_handle,
+                0,
+                0,
+                (int)self->panel_config.video_timing.h_size,
+                (int)self->panel_config.video_timing.v_size,
+                dst
+            );
+
+            if (ret != 0) {
+                mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("%d(esp_lcd_panel_draw_bitmap)"), ret);
+                return ret;
+            }
+
+            self->transmitting_buf = dst;
+            self->back_fb_index ^= 1;
+            return LCD_OK;
+        }
+        #endif
 
         self->trans_done = false;
         self->transmitting_buf = NULL;
