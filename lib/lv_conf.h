@@ -773,9 +773,9 @@ extern void *mp_lv_roots;
 #endif
 
 /*API for memory-mapped file access. */
-#define LV_USE_FS_MEMFS 0
+#define LV_USE_FS_MEMFS 1  // lets the JPEG (TJpgDec) decoder read from RAM (lv.image_dsc_t with cf=RAW), e.g. MJPEG video frames; 'M' is MicroPythonOS's VFS driver
 #if LV_USE_FS_MEMFS
-    #define LV_FS_MEMFS_LETTER '\0'     /*Set an upper cased letter on which the drive will accessible (e.g. 'A')*/
+    #define LV_FS_MEMFS_LETTER 'J'     /*Set an upper cased letter on which the drive will accessible (e.g. 'A')*/
 #endif
 
 /*API for LittleFs. */
