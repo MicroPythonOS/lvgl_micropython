@@ -58,6 +58,10 @@ class TaskHandler(object):
             self.max_scheduled = max_scheduled
 
             self._last_tick = time.ticks_ms()  # NOQA
+            # Fairness: how long the last handler pass took and when it ended,
+            # so the timer can leave the main thread a share of the CPU.
+            self._last_run_ms = 0
+            self._last_end = self._last_tick
             self._timer.init(
                 mode=Timer.PERIODIC,
                 period=self.duration,
@@ -102,6 +106,7 @@ class TaskHandler(object):
         return cls._current_instance is not None
 
     def _task_handler(self, _):
+        run_start = time.ticks_ms()  # NOQA
         try:
             self._scheduled -= 1
 
@@ -159,6 +164,11 @@ class TaskHandler(object):
             if self.exception_hook:
                 self.exception_hook(e)
 
+        finally:
+            end = time.ticks_ms()  # NOQA
+            self._last_run_ms = time.ticks_diff(end, run_start)  # NOQA
+            self._last_end = end
+
     def _timer_cb(self, _):
         # The only place LVGL time advances. Feed it the real elapsed time
         # rather than the nominal period: timer callbacks are delivered via the
@@ -168,6 +178,15 @@ class TaskHandler(object):
         lv.tick_inc(time.ticks_diff(now, self._last_tick))  # NOQA
         self._last_tick = now
         if self._running:
+            return
+
+        # Fairness: a handler pass that outlasts the timer period would
+        # otherwise be rescheduled back-to-back, starving everything else on
+        # the main thread (the REPL, touch and app tasks). Wait until at
+        # least a quarter of the last pass's duration has elapsed since it
+        # ended, so the main thread always keeps ~20% of the CPU.
+        gap = self._last_run_ms >> 2
+        if gap > self.duration and time.ticks_diff(now, self._last_end) < gap:  # NOQA
             return
 
         if self._scheduled < self.max_scheduled:
