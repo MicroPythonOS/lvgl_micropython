@@ -1,0 +1,47 @@
+diff --git a/ports/esp32/esp32_common.cmake b/ports/esp32/esp32_common.cmake
+index e3b1b81..6ec1f26 100644
+--- a/ports/esp32/esp32_common.cmake
++++ b/ports/esp32/esp32_common.cmake
+@@ -311,6 +311,15 @@ endforeach()
+ # Include the main MicroPython cmake rules.
+ include(${MICROPY_DIR}/py/mkrules.cmake)
+ 
++if(CONFIG_IDF_TARGET_ARCH_RISCV AND MICROPY_FROZEN_CONTENT)
++    # Frozen native code is emitted as byte arrays in a code section with a
++    # 4-byte alignment (tools/mpy-tool.py). With linker relaxation on, the
++    # assembler pads that alignment with R_RISCV_ALIGN NOPs, which cannot
++    # cover odd sizes ("can't relax section"); the file holds no code that
++    # could be relaxed, so assemble it without relaxation.
++    set_source_files_properties(${MICROPY_FROZEN_CONTENT} PROPERTIES COMPILE_OPTIONS "-mno-relax")
++endif()
++
+ # Generate source files for named pins (requires mkrules.cmake for MICROPY_GENHDR_DIR).
+ 
+ set(GEN_PINS_PREFIX "${MICROPY_PORT_DIR}/boards/pins_prefix.c")
+diff --git a/tools/mpy-tool.py b/tools/mpy-tool.py
+index 67e2cbf..a61b0cc 100644
+--- a/tools/mpy-tool.py
++++ b/tools/mpy-tool.py
+@@ -1254,13 +1254,19 @@ class RawCodeNative(RawCode):
+             MP_NATIVE_ARCH_ARMV6,
+             MP_NATIVE_ARCH_XTENSA,
+             MP_NATIVE_ARCH_XTENSAWIN,
++            MP_NATIVE_ARCH_RV32IMC,
++            MP_NATIVE_ARCH_RV64IMC,
+         ):
+-            # ARMV6 or Xtensa -- four byte align.
++            # ARMV6, Xtensa or RISC-V -- four byte align. RISC-V needs only two,
++            # but the assembler never pads a 2-byte alignment inside a code
++            # section, so arrays after an odd-sized one would start at an odd
++            # address (a 4-byte one is padded once relaxation is off, see
++            # ports/esp32/esp32_common.cmake).
+             self.fun_data_attributes += " __attribute__ ((aligned (4)))"
+         elif (
+             MP_NATIVE_ARCH_ARMV6M <= config.native_arch <= MP_NATIVE_ARCH_ARMV7EMDP
+-        ) or MP_NATIVE_ARCH_RV32IMC <= config.native_arch <= MP_NATIVE_ARCH_RV64IMC:
+-            # ARMVxxM or RV{32,64}IMC -- two byte align.
++        ):
++            # ARMVxxM -- two byte align.
+             self.fun_data_attributes += " __attribute__ ((aligned (2)))"
+ 
+     def disassemble(self):

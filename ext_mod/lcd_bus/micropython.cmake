@@ -19,6 +19,7 @@ if(ESP_PLATFORM)
         ${CMAKE_CURRENT_LIST_DIR}/esp32_src/rgb_bus.c
         ${CMAKE_CURRENT_LIST_DIR}/esp32_src/rgb_bus_rotation.c
         ${CMAKE_CURRENT_LIST_DIR}/esp32_src/rgb565_dither.c
+        ${CMAKE_CURRENT_LIST_DIR}/esp32_src/dsi_bus.c
     )
 
     # gets esp_lcd include paths
@@ -29,6 +30,17 @@ if(ESP_PLATFORM)
     if(ESP_LCD_INCLUDES)
         list(TRANSFORM ESP_LCD_INCLUDES PREPEND ${ESP_LCD_DIR}/)
         list(APPEND LCD_INCLUDES ${ESP_LCD_INCLUDES})
+    endif()
+
+    # the DSI bus rotates with the PPA where the chip has one (ESP32-P4)
+    if(CONFIG_SOC_PPA_SUPPORTED)
+        idf_component_get_property(ESP_PPA_INCLUDES esp_driver_ppa INCLUDE_DIRS)
+        idf_component_get_property(ESP_PPA_DIR esp_driver_ppa COMPONENT_DIR)
+
+        if(ESP_PPA_INCLUDES)
+            list(TRANSFORM ESP_PPA_INCLUDES PREPEND ${ESP_PPA_DIR}/)
+            list(APPEND LCD_INCLUDES ${ESP_PPA_INCLUDES})
+        endif()
     endif()
 
 else()
