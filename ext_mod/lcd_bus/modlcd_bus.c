@@ -6,7 +6,10 @@
 #include "i2c_bus.h"
 #include "i80_bus.h"
 #include "rgb_bus.h"
-#include "dsi_bus.h"
+
+#ifdef ESP_IDF_VERSION
+    #include "dsi_bus.h"
+#endif
 
 #ifdef MP_PORT_UNIX
     #include "sdl_bus.h"
