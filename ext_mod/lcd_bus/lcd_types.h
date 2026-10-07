@@ -12,6 +12,8 @@
 
     typedef struct _lcd_panel_io_t lcd_panel_io_t;
 
+    extern const mp_obj_type_t mp_lcd_flush_ready_cb_type;
+
     #ifdef ESP_IDF_VERSION
         #include "sdkconfig.h"
 

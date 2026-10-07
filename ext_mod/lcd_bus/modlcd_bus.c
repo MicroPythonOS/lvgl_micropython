@@ -298,6 +298,7 @@ static const mp_rom_map_elem_t mp_module_lcd_bus_globals_table[] = {
     #if defined(ESP_IDF_VERSION) && SOC_MIPI_DSI_SUPPORTED
         { MP_ROM_QSTR(MP_QSTR_DSIBus),         MP_ROM_PTR(&mp_lcd_dsi_bus_type)        },
     #endif
+    { MP_ROM_QSTR(MP_QSTR_FlushReadyCallback), MP_ROM_PTR(&mp_lcd_flush_ready_cb_type)  },
     { MP_ROM_QSTR(MP_QSTR__pump_main_thread),  MP_ROM_PTR(&mp_lcd_bus__pump_main_thread_obj)       },
 
     #ifdef MP_PORT_UNIX
