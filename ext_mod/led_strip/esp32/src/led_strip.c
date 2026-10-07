@@ -191,6 +191,7 @@ static bool tx_done_callback(rmt_channel_handle_t tx_chan, const rmt_tx_done_eve
     void *old_state = mp_thread_get_state();
 
     mp_state_thread_t ts; // local thread state for the ISR
+    memset(&ts, 0, sizeof(ts));
     mp_thread_set_state(&ts);
     mp_stack_set_top((void*)sp); // need to include in root-pointer scan
     mp_stack_set_limit(CONFIG_FREERTOS_IDLE_TASK_STACKSIZE - 1024); // tune based on ISR thread stack size
