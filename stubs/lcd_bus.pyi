@@ -15,6 +15,15 @@ MEMORY_DEFAULT: Final[int] = ...
 DEBUG_ENABLED: Final[int] = ...
 
 
+class FlushReadyCallback:
+
+    def __init__(self, display: Any, /):
+        ...
+
+    def __call__(self, *args: Any) -> None:
+        ...
+
+
 class I2CBus:
 
     def __init__(

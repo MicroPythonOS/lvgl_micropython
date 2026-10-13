@@ -274,7 +274,7 @@ class DisplayDriver:
                 self._dummy_set_memory_location
             )
 
-        self._data_bus.register_callback(self._flush_ready_cb)
+        self._register_flush_ready_cb()
         self.set_default()
         self._disp_drv.add_event_cb(
             self._on_size_change,
@@ -607,6 +607,12 @@ class DisplayDriver:
 
     def _flush_ready_cb(self, *_):
         self._disp_drv.flush_ready()
+
+    def _register_flush_ready_cb(self):
+        if type(self)._flush_ready_cb is DisplayDriver._flush_ready_cb:
+            self._flush_ready_cb = lcd_bus.FlushReadyCallback(self._disp_drv)
+
+        self._data_bus.register_callback(self._flush_ready_cb)
 
     def _madctl(self, colormode, rotations, rotation=None):
         if rotation is None:

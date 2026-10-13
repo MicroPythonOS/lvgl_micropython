@@ -9,6 +9,10 @@
 #include "py/objarray.h"
 #include "py/binary.h"
 
+#include "lvgl.h"
+
+#include <string.h>
+
 void rgb565_byte_swap(void *buf, uint32_t buf_size_px)
 {
     uint16_t *buf16 = (uint16_t *)buf;
@@ -21,6 +25,61 @@ void rgb565_byte_swap(void *buf, uint32_t buf_size_px)
 }
 
 
+typedef struct _mp_lcd_flush_ready_cb_obj_t {
+    mp_obj_base_t base;
+    lv_display_t *disp;
+} mp_lcd_flush_ready_cb_obj_t;
+
+
+static mp_obj_t mp_lcd_flush_ready_cb_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args)
+{
+    mp_arg_check_num(n_args, n_kw, 1, 1, false);
+
+    if (mp_obj_get_type(all_args[0])->name != MP_QSTR_lv_display_t) {
+        mp_raise_TypeError(MP_ERROR_TEXT("expected an lv.display_t"));
+    }
+
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(all_args[0], &bufinfo, MP_BUFFER_READ);
+
+    lv_display_t *disp = NULL;
+    if (bufinfo.len == sizeof(disp)) {
+        memcpy(&disp, bufinfo.buf, sizeof(disp));
+    }
+
+    if (disp == NULL) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid display"));
+    }
+
+    mp_lcd_flush_ready_cb_obj_t *self = mp_obj_malloc(mp_lcd_flush_ready_cb_obj_t, type);
+    self->disp = disp;
+
+    return MP_OBJ_FROM_PTR(self);
+}
+
+
+static mp_obj_t mp_lcd_flush_ready_cb_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args)
+{
+    LCD_UNUSED(n_args);
+    LCD_UNUSED(n_kw);
+    LCD_UNUSED(args);
+
+    mp_lcd_flush_ready_cb_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    lv_display_flush_ready(self->disp);
+
+    return mp_const_none;
+}
+
+
+MP_DEFINE_CONST_OBJ_TYPE(
+    mp_lcd_flush_ready_cb_type,
+    MP_QSTR_FlushReadyCallback,
+    MP_TYPE_FLAG_NONE,
+    make_new, mp_lcd_flush_ready_cb_make_new,
+    call, mp_lcd_flush_ready_cb_call
+);
+
+
 #ifdef ESP_IDF_VERSION
     // esp-idf includes
     #include "esp_lcd_panel_io.h"
@@ -29,6 +88,7 @@ void rgb565_byte_swap(void *buf, uint32_t buf_size_px)
     #include "rom/ets_sys.h"
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
+    #include "freertos/idf_additions.h"
     #include "esp_system.h"
     #include "esp_cpu.h"
 
@@ -36,6 +96,33 @@ void rgb565_byte_swap(void *buf, uint32_t buf_size_px)
     #include "py/gc.h"
     #include "py/stackctrl.h"
     #include "mphalport.h"
+
+    #if CONFIG_SPI_MASTER_ISR_IN_IRAM
+        #error "cb_isr() and bus_trans_done_cb() are not IRAM-safe: CONFIG_SPI_MASTER_ISR_IN_IRAM must stay disabled"
+    #endif
+
+    #if CONFIG_IDF_TARGET_ARCH_XTENSA
+        extern volatile StackType_t port_IntStack[portNUM_PROCESSORS][configISR_STACK_SIZE];
+        #define LCD_ISR_STACK_START()    ((uint32_t)&port_IntStack[esp_cpu_get_core_id()][0])
+    #elif CONFIG_IDF_TARGET_ARCH_RISCV
+        extern StackType_t xIsrStack[portNUM_PROCESSORS][configISR_STACK_SIZE];
+        #define LCD_ISR_STACK_START()    ((uint32_t)&xIsrStack[esp_cpu_get_core_id()][0])
+    #else
+        #error "cb_isr() does not know where the interrupt stack of this architecture is"
+    #endif
+
+    #define LCD_CB_STACK_RESERVE    (1024)
+
+    static void lcd_isr_print_strn(void *env, const char *str, size_t len)
+    {
+        LCD_UNUSED(env);
+
+        while (len--) {
+            ets_printf("%c", *str++);
+        }
+    }
+
+    static const mp_print_t lcd_isr_print = { NULL, lcd_isr_print_strn };
 
     // The 2 functions below are specific to ESP32. They cat called within an ISR context
     // since the rest of the boards are either bitbang or utilize the micropython
@@ -51,16 +138,32 @@ void rgb565_byte_swap(void *buf, uint32_t buf_size_px)
     // Called in ISR context!
     void cb_isr(mp_obj_t cb)
     {
+        if (mp_obj_is_type(cb, &mp_lcd_flush_ready_cb_type)) {
+            lv_display_flush_ready(((mp_lcd_flush_ready_cb_obj_t *)MP_OBJ_TO_PTR(cb))->disp);
+            mp_hal_wake_main_task_from_isr();
+            return;
+        }
+
         volatile uint32_t sp = (uint32_t)esp_cpu_get_sp();
+
+        bool in_isr = xPortInIsrContext();
+        uint32_t stack_start = in_isr ? LCD_ISR_STACK_START() : (uint32_t)pxTaskGetStackStart(NULL);
+        const mp_print_t *print = in_isr ? &lcd_isr_print : &mp_plat_print;
+
+        if (sp < stack_start + LCD_CB_STACK_RESERVE) {
+            mp_printf(print, "lcd_bus: not enough stack left to run the callback\n");
+            return;
+        }
 
         // Calling micropython from ISR
         // See: https://github.com/micropython/micropython/issues/4895
         void *old_state = mp_thread_get_state();
 
         mp_state_thread_t ts; // local thread state for the ISR
+        memset(&ts, 0, sizeof(ts));
         mp_thread_set_state(&ts);
         mp_stack_set_top((void*)sp); // need to include in root-pointer scan
-        mp_stack_set_limit(CONFIG_FREERTOS_IDLE_TASK_STACKSIZE - 1024); // tune based on ISR thread stack size
+        mp_stack_set_limit(sp - stack_start - LCD_CB_STACK_RESERVE);
         mp_locals_set(mp_state_ctx.thread.dict_locals); // use main thread's locals
         mp_globals_set(mp_state_ctx.thread.dict_globals); // use main thread's globals
 
@@ -72,8 +175,8 @@ void rgb565_byte_swap(void *buf, uint32_t buf_size_px)
             mp_call_function_n_kw(cb, 0, 0, NULL);
             nlr_pop();
         } else {
-            ets_printf("Uncaught exception in IRQ callback handler!\n");
-            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));  // changed to &mp_plat_print to fit this context
+            mp_printf(print, "Uncaught exception in IRQ callback handler!\n");
+            mp_obj_print_exception(print, MP_OBJ_FROM_PTR(nlr.ret_val));
         }
 
         gc_unlock();

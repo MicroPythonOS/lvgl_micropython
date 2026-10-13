@@ -184,7 +184,7 @@ class SDLDisplay(display_driver_framework.DisplayDriver):
 
         self._ignore_size_chg = False
 
-        data_bus.register_callback(self._flush_ready_cb)
+        self._register_flush_ready_cb()
 
         data_bus.register_quit_callback(self._quit_cb)
         data_bus.register_window_callback(self._windows_event_cb)
