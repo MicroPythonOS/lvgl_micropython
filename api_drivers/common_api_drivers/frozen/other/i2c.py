@@ -6,13 +6,27 @@ import machine
 class I2C(object):
     class Bus(object):
 
-        def __init__(self, host, scl, sda, freq=400000, use_locks=False):
-            self._bus = machine.I2C(
-                host,
-                scl=machine.Pin(scl),
-                sda=machine.Pin(sda),
-                freq=freq
-            )
+        def __init__(self, host, scl, sda, freq=400000, use_locks=False, timeout=None):
+            # timeout: maximum duration of one hardware I2C transaction, in
+            # microseconds. None keeps machine.I2C's port default (50 ms on
+            # ESP32). Bounding it makes readfrom_mem()/writeto_mem() raise
+            # OSError on a stalled bus instead of blocking longer than the
+            # timeout, so a busy device can't freeze callers for long.
+            if timeout is None:
+                self._bus = machine.I2C(
+                    host,
+                    scl=machine.Pin(scl),
+                    sda=machine.Pin(sda),
+                    freq=freq
+                )
+            else:
+                self._bus = machine.I2C(
+                    host,
+                    scl=machine.Pin(scl),
+                    sda=machine.Pin(sda),
+                    freq=freq,
+                    timeout=timeout
+                )
 
             if use_locks:
                 import _thread
