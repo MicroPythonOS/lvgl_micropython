@@ -1,0 +1,39 @@
+diff --git a/builder/macOS.py b/builder/macOS.py
+index fb0daf7..43c8411 100644
+--- a/builder/macOS.py
++++ b/builder/macOS.py
+@@ -116,16 +116,20 @@ def submodules():
+ 
+-        out = out.split('Installed\n', 1)[-1]
+-        alt_path = out.split('(', 1)[0].strip().split('Cellar', 1)[0]
+-
+-        if 'export LDFLAGS=' in out:
+-            out = out.split('export LDFLAGS="', 1)[-1]
+-            ldflags = out.split('"', 1)[0]
+-        else:
+-            ldflags = f'"-L{alt_path}opt/libffi/lib"'
+-
+-        if 'export CPPFLAGS=' in out:
+-            out = out.split('export CPPFLAGS="', 1)[-1]
+-            cflags = out.split('"', 1)[0]
+-        else:
+-            cflags = f'"-I{alt_path}opt/libffi/include"'
++        # `brew info` no longer prints the Cellar path (Homebrew 5.1.12) and
++        # no longer quotes the `export LDFLAGS=...` lines (7.0.5), so ask
++        # brew for its prefix. libffi is keg-only: its files are under
++        # <prefix>/opt/libffi. spawn() also returns stderr lines, so keep
++        # only the line that is a directory.
++        ret, out = spawn([[brew_path, '--prefix']], out_to_screen=False)
++        if ret:
++            print(out)
++            sys.exit(ret)
++
++        prefix = [line for line in out.split('\n') if os.path.isdir(line)]
++        if len(prefix) != 1:
++            print(out)
++            raise RuntimeError('Unable to determine the Homebrew prefix')
++
++        alt_path = prefix[0] + '/'
++        ldflags = f'"-L{alt_path}opt/libffi/lib"'
++        cflags = f'"-I{alt_path}opt/libffi/include"'
+ 
