@@ -162,7 +162,7 @@
         self->bus_config.bus_id = (int)args[ARG_bus_id].u_int;
         self->bus_config.num_data_lanes = (uint8_t)args[ARG_data_lanes].u_int;
         self->bus_config.lane_bit_rate_mbps = (uint32_t)args[ARG_freq].u_int;
-        self->bus_config.phy_clk_src = MIPI_DSI_PHY_CLK_SRC_DEFAULT;
+        self->bus_config.phy_clk_src = 0;   // 0 = let ESP-IDF pick; MIPI_DSI_PHY_CLK_SRC_DEFAULT is PLL_F20M, which aborts on rev 3.x
 
         self->panel_io_config.virtual_channel = (uint8_t)args[ARG_virtual_channel].u_int;
 
