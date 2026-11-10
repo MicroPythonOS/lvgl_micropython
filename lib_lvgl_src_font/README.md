@@ -42,10 +42,18 @@ LVGL in lib/lvgl/scripts/built_in_font/).
 
 Notes:
 
-- Sizes 10-28 are RLE-compressed (no `--no-compress`), which needs
-  `LV_USE_FONT_COMPRESSED` (already enabled in lib/lv_conf.h) and saves
-  ~19 KB of flash for 10-18 on top of the long-compressed 20/24/28.
-  The larger disabled sizes and the subpx variant remain uncompressed.
+- RLE compression needs `LV_USE_FONT_COMPRESSED` (already enabled in
+  lib/lv_conf.h) and saves kilobytes of flash, but LVGL then decodes
+  every glyph on every draw. Sizes 10, 14, 18, 20, 24 and 28 are
+  compressed; sizes 22, 26, 30+ and the subpx variant are not.
+
+- **12 and 16 are deliberately uncompressed.** They are the two faces
+  FontManager hands out most (12 is the default), so the per-glyph
+  decode shows up everywhere. Measured on an ESP32-S3 badge with
+  identical text: 0.062 ms/glyph compressed vs 0.037 ms at 12px, and
+  0.056 vs 0.034 ms at 16px, i.e. a full text screen (about 800 glyphs)
+  repaints ~20 ms faster for +6.7 KB of firmware. If you regenerate
+  them, keep the `--no-compress --no-prefilter` flags.
 
 - `lv_font_montserrat_14_aligned.c` is intentionally not regenerated:
   it is an ASCII-only test font (range 0x20-0x7F,0xB0,0x2022).
