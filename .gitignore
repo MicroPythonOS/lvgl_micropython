@@ -107,3 +107,7 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
+
+# Generated on every esp32 build by builder/esp32.py (user_c_module /
+# add_components), containing this checkout's absolute USER_C_MODULE paths.
+/ext_mod/esp32_components.cmake

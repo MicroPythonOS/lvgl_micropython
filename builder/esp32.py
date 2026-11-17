@@ -883,8 +883,11 @@ def setup_idf_environ():
 
 def user_c_module():
 
-    with open('ext_mod/esp32_components.cmake', 'r') as f:
-        data = f.read().split('\n')
+    try:
+        with open('ext_mod/esp32_components.cmake', 'r') as f:
+            data = f.read().split('\n')
+    except FileNotFoundError:
+        data = ['']
 
     for line in data[:]:
         if line.startswith('include'):
